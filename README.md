@@ -1,4 +1,4 @@
-# Bus Tracker - Otobüs Canlı Takip Sistemi
+# SeferScope - Otobüs Canlı Takip Sistemi
 
 Gerçek zamanlı otobüs konum takibi, canlı harita, WebSocket güncellemeleri ve booking yönetimi sistem.
 
@@ -16,7 +16,7 @@ Gerçek zamanlı otobüs konum takibi, canlı harita, WebSocket güncellemeleri 
 ## Proje Yapısı
 
 ```
-coinscanner/
+SeferScope/
 ├── backend/                    # FastAPI backend
 │   ├── app/
 │   │   ├── main.py            # Ana FastAPI uygulaması
@@ -49,7 +49,7 @@ coinscanner/
 #### Yerel ortamda (Windows)
 
 ```powershell
-cd C:\Users\user\Desktop\coinscanner
+cd <proje-klasoru>
 
 # Virtual environment oluştur
 py -3 -m venv .venv
@@ -229,9 +229,9 @@ python scripts/ws_client.py
 ### Docker Push
 
 ```bash
-docker build -t bustracker-backend .
-docker tag bustracker-backend:latest your-registry/bustracker-backend:1.0.0
-docker push your-registry/bustracker-backend:1.0.0
+docker build -t seferscope-backend .
+docker tag seferscope-backend:latest your-registry/seferscope-backend:1.0.0
+docker push your-registry/seferscope-backend:1.0.0
 ```
 
 ### Kubernetes (k8s)
@@ -282,8 +282,8 @@ MIT License - [LICENSE](LICENSE)
 
 ## Destek
 
-- GitHub Issues: [GitHub Issues](https://github.com/coinscanner/bus-tracker/issues)
-- Email: support@bustracker.local
+- GitHub Issues: [GitHub Issues](https://github.com/Exneed/SeferScope/issues)
+- Email: support@seferscope.dev
 
 ---
 

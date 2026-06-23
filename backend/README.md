@@ -1,4 +1,4 @@
-﻿# Bus Tracker Backend (MVP skeleton)
+﻿# SeferScope Backend (MVP skeleton)
 
 Minimal FastAPI backend with WebSocket-based realtime telemetry broadcasting.
 

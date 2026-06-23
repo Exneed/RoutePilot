@@ -1,4 +1,4 @@
-# 🚌 Bus Tracker - Tam Proje Özeti
+# SeferScope - Tam Proje Özeti
 
 ## ✅ BAŞARILI OLARAK TAMAMLANAN PROJE
 
@@ -9,7 +9,7 @@ Bu proje, modern otobüs takip sistemi için **tam stack çözüm** sunmaktadır
 ## 📦 Proje Bileşenleri
 
 ### 1️⃣ **Backend (Python/FastAPI)**
-Lokasyon: `c:\Users\user\Desktop\coinscanner\backend`
+Lokasyon: `<proje-klasoru>/backend`
 
 **Teknolojiler:**
 - FastAPI (Python 3.11+)
@@ -78,7 +78,7 @@ Lokasyon: `backend/app/static/index.html`
 ---
 
 ### 3️⃣ **Android Uygulaması (Flutter)**
-Lokasyon: `c:\Users\user\Desktop\coinscanner\bus_tracker_mobile`
+Lokasyon: `<proje-klasoru>/bus_tracker_mobile`
 
 **Teknolojiler:**
 - Flutter 3.0+
@@ -280,7 +280,7 @@ Demo Şu Anda:
 ## 📝 Dosya Konumları
 
 ```
-coinscanner/
+SeferScope/
 ├── backend/
 │   ├── app/
 │   │   ├── main.py                ✅ 700+ satır

@@ -1,4 +1,4 @@
-# Bus Tracker - Android Uygulaması
+# SeferScope - Android Uygulaması
 
 Modern Flutter uygulaması ile Android'e uyumlu, yeşil temayla tasarlanmış otobüs takip sistemi.
 
@@ -104,4 +104,4 @@ Login → Search → Detail → Seats → Payment → Tracking → Search
 
 ## 👨‍💻 Geliştirici
 
-Bus Tracker - Otobüs Takip Sistemi 2026
+SeferScope - Otobüs Takip Sistemi 2026
