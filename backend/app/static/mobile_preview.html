@@ -1,0 +1,796 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Bus Tracker - Mobil Uygulama</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: #f5f5f5;
+      padding: 20px;
+    }
+    .container { max-width: 1400px; margin: 0 auto; }
+    h1 { text-align: center; color: #1B7F3D; margin-bottom: 30px; font-size: 2.5rem; }
+    
+    .screens-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+      gap: 30px;
+      margin-bottom: 40px;
+    }
+
+    .phone-frame {
+      background: #000;
+      border-radius: 40px;
+      padding: 14px;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+      aspect-ratio: 9/18;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .notch {
+      background: #000;
+      height: 28px;
+      border-radius: 0 0 20px 20px;
+      margin-bottom: 2px;
+    }
+
+    .screen-content {
+      flex: 1;
+      background: white;
+      border-radius: 28px;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .screen-label {
+      text-align: center;
+      margin-top: 10px;
+      font-weight: 600;
+      color: #333;
+      font-size: 0.95rem;
+    }
+
+    /* LOGIN SCREEN */
+    .login-screen {
+      background: linear-gradient(135deg, #1B7F3D 0%, #0E5323 100%);
+      color: white;
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      text-align: center;
+    }
+
+    .login-screen .logo {
+      width: 60px;
+      height: 60px;
+      background: rgba(255,255,255,0.2);
+      border-radius: 16px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 32px;
+      margin-bottom: 16px;
+    }
+
+    .login-screen h2 {
+      font-size: 24px;
+      margin-bottom: 4px;
+    }
+
+    .login-screen p {
+      font-size: 12px;
+      opacity: 0.8;
+      margin-bottom: 24px;
+    }
+
+    .tabs {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 0;
+      background: rgba(255,255,255,0.1);
+      border-radius: 12px;
+      margin-bottom: 20px;
+      overflow: hidden;
+    }
+
+    .tab {
+      padding: 10px;
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      border: none;
+      background: transparent;
+      color: rgba(255,255,255,0.6);
+    }
+
+    .tab.active {
+      background: white;
+      color: #1B7F3D;
+    }
+
+    .form-field {
+      background: rgba(255,255,255,0.1);
+      border: 1px solid rgba(255,255,255,0.3);
+      border-radius: 8px;
+      padding: 8px 12px;
+      color: white;
+      font-size: 11px;
+      margin-bottom: 10px;
+      text-align: left;
+    }
+
+    .form-field::placeholder {
+      color: rgba(255,255,255,0.6);
+    }
+
+    .btn {
+      background: linear-gradient(135deg, #1B7F3D 0%, #0E5323 100%);
+      color: white;
+      border: none;
+      border-radius: 8px;
+      padding: 10px;
+      font-weight: 600;
+      font-size: 12px;
+      cursor: pointer;
+      margin-top: 10px;
+    }
+
+    /* SEARCH SCREEN */
+    .search-screen {
+      background: white;
+      padding: 12px;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .search-header {
+      background: linear-gradient(135deg, #1B7F3D 0%, #0E5323 100%);
+      color: white;
+      padding: 12px;
+      border-radius: 8px;
+      margin-bottom: 10px;
+      text-align: center;
+      font-size: 14px;
+      font-weight: 600;
+    }
+
+    .search-input {
+      border: 1px solid #ddd;
+      border-radius: 6px;
+      padding: 6px 8px;
+      font-size: 11px;
+      margin-bottom: 8px;
+    }
+
+    .trip-card {
+      border: 1px solid #eee;
+      border-radius: 8px;
+      padding: 10px;
+      margin-bottom: 8px;
+      background: #f9f9f9;
+    }
+
+    .trip-card-title {
+      font-weight: 700;
+      font-size: 12px;
+      color: #1B7F3D;
+      margin-bottom: 4px;
+    }
+
+    .trip-card-info {
+      font-size: 10px;
+      color: #666;
+      margin-bottom: 4px;
+    }
+
+    .trip-price {
+      font-size: 13px;
+      font-weight: 700;
+      color: #1B7F3D;
+    }
+
+    /* SEATS SCREEN */
+    .seats-screen {
+      background: white;
+      padding: 10px;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .seats-header {
+      background: linear-gradient(135deg, #1B7F3D 0%, #0E5323 100%);
+      color: white;
+      padding: 8px;
+      border-radius: 6px;
+      margin-bottom: 8px;
+      text-align: center;
+      font-size: 12px;
+      font-weight: 600;
+    }
+
+    .seat-grid {
+      display: grid;
+      grid-template-columns: repeat(5, 1fr);
+      gap: 4px;
+      margin-bottom: 8px;
+    }
+
+    .seat {
+      aspect-ratio: 1;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      font-size: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      background: white;
+    }
+
+    .seat.selected {
+      background: #1B7F3D;
+      color: white;
+      border-color: #0E5323;
+    }
+
+    .seat.booked {
+      background: #f0f0f0;
+      color: #999;
+      cursor: not-allowed;
+    }
+
+    .seat-legend {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 4px;
+      font-size: 9px;
+      margin-bottom: 8px;
+    }
+
+    .legend-item {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    .legend-box {
+      width: 12px;
+      height: 12px;
+      border-radius: 2px;
+      border: 1px solid #ddd;
+    }
+
+    .legend-available .legend-box { background: white; }
+    .legend-selected .legend-box { background: #1B7F3D; }
+    .legend-booked .legend-box { background: #f0f0f0; }
+
+    /* PAYMENT SCREEN */
+    .payment-screen {
+      background: white;
+      padding: 10px;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .payment-header {
+      background: #fff3cd;
+      color: #856404;
+      padding: 8px;
+      border-radius: 6px;
+      margin-bottom: 8px;
+      font-size: 10px;
+      text-align: center;
+      border: 1px solid #ffc107;
+    }
+
+    .payment-info {
+      background: #f9f9f9;
+      border: 1px solid #ddd;
+      border-radius: 6px;
+      padding: 8px;
+      margin-bottom: 8px;
+      font-size: 10px;
+    }
+
+    .payment-row {
+      display: flex;
+      justify-content: space-between;
+      margin-bottom: 6px;
+      padding-bottom: 6px;
+      border-bottom: 1px solid #eee;
+    }
+
+    .payment-row:last-child {
+      border-bottom: none;
+    }
+
+    .payment-total {
+      font-weight: 700;
+      font-size: 12px;
+      color: #1B7F3D;
+    }
+
+    /* TRACKING SCREEN */
+    .tracking-screen {
+      background: white;
+      padding: 10px;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .pnr-box {
+      background: linear-gradient(135deg, #1B7F3D 0%, #0E5323 100%);
+      color: white;
+      padding: 12px;
+      border-radius: 8px;
+      text-align: center;
+      margin-bottom: 8px;
+    }
+
+    .pnr-label {
+      font-size: 10px;
+      opacity: 0.8;
+      margin-bottom: 4px;
+    }
+
+    .pnr-code {
+      font-size: 14px;
+      font-weight: 700;
+      font-family: monospace;
+    }
+
+    .map-placeholder {
+      background: #e0e0e0;
+      border-radius: 6px;
+      height: 80px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 10px;
+      color: #999;
+      margin-bottom: 8px;
+    }
+
+    .stats-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 6px;
+    }
+
+    .stat-box {
+      background: #f9f9f9;
+      border: 1px solid #ddd;
+      border-radius: 6px;
+      padding: 8px;
+      text-align: center;
+      font-size: 9px;
+    }
+
+    .stat-value {
+      font-size: 12px;
+      font-weight: 700;
+      color: #1B7F3D;
+      margin-bottom: 2px;
+    }
+
+    /* DETAIL SCREEN */
+    .detail-screen {
+      background: white;
+      padding: 10px;
+      display: flex;
+      flex-direction: column;
+      overflow-y: auto;
+    }
+
+    .detail-header {
+      background: linear-gradient(135deg, #1B7F3D 0%, #0E5323 100%);
+      color: white;
+      padding: 10px;
+      border-radius: 8px;
+      margin-bottom: 8px;
+      font-size: 11px;
+    }
+
+    .detail-header-title {
+      font-size: 13px;
+      font-weight: 700;
+      margin-bottom: 4px;
+    }
+
+    .stops-list {
+      font-size: 9px;
+      line-height: 1.5;
+    }
+
+    .stop-item {
+      padding: 6px 0;
+      border-bottom: 1px solid #eee;
+      color: #666;
+    }
+
+    .stop-time {
+      font-weight: 600;
+      color: #1B7F3D;
+    }
+
+    .info-section {
+      background: white;
+      border: 1px solid #ddd;
+      border-radius: 6px;
+      padding: 8px;
+      margin-bottom: 8px;
+      font-size: 10px;
+    }
+
+    .info-row {
+      display: flex;
+      justify-content: space-between;
+      padding: 4px 0;
+    }
+
+    .files-section {
+      margin-top: auto;
+      padding-top: 10px;
+      border-top: 1px solid #eee;
+    }
+
+    .file-item {
+      background: #f9f9f9;
+      padding: 6px;
+      border-radius: 4px;
+      font-size: 9px;
+      margin-bottom: 4px;
+      color: #666;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>🚌 Flutter Mobil Uygulama Önizlemesi</h1>
+    
+    <div class="screens-grid">
+      <!-- LOGIN SCREEN -->
+      <div>
+        <div class="phone-frame">
+          <div class="notch"></div>
+          <div class="screen-content login-screen">
+            <div class="logo">🚌</div>
+            <h2>Bus Tracker</h2>
+            <p>Otobüs Takip Sistemi</p>
+            <div class="tabs">
+              <button class="tab active">Giriş</button>
+              <button class="tab">Kayıt</button>
+            </div>
+            <input type="text" class="form-field" placeholder="Email Adresiniz">
+            <input type="password" class="form-field" placeholder="••••••••">
+            <button class="btn">Giriş Yap</button>
+          </div>
+        </div>
+        <div class="screen-label">1️⃣ Login Screen</div>
+      </div>
+
+      <!-- SEARCH SCREEN -->
+      <div>
+        <div class="phone-frame">
+          <div class="notch"></div>
+          <div class="screen-content search-screen">
+            <div class="search-header">Bilet Ara</div>
+            <input type="text" class="search-input" placeholder="Rota">
+            <input type="text" class="search-input" placeholder="Plaka">
+            <input type="text" class="search-input" placeholder="Firma">
+            <div class="trip-card">
+              <div class="trip-card-title">Ankara → Pamukkale</div>
+              <div class="trip-card-info">🕐 08:00 - 16:30</div>
+              <div class="trip-card-info">🚍 06 ABC 0001</div>
+              <div class="trip-price">₺250</div>
+            </div>
+            <div class="trip-card">
+              <div class="trip-card-title">İstanbul → Ankara</div>
+              <div class="trip-card-info">🕐 09:00 - 14:30</div>
+              <div class="trip-card-info">🚍 06 ABC 0002</div>
+              <div class="trip-price">₺200</div>
+            </div>
+          </div>
+        </div>
+        <div class="screen-label">2️⃣ Search Screen</div>
+      </div>
+
+      <!-- DETAIL SCREEN -->
+      <div>
+        <div class="phone-frame">
+          <div class="notch"></div>
+          <div class="screen-content detail-screen">
+            <div class="detail-header">
+              <div class="detail-header-title">Ankara → Pamukkale</div>
+              <div>08:00 - 16:30 | ₺250</div>
+            </div>
+            <div class="info-section">
+              <div class="info-row">
+                <span>Otobüs:</span>
+                <span style="font-weight: 600;">06 ABC 0001</span>
+              </div>
+              <div class="info-row">
+                <span>Boş Koltuk:</span>
+                <span style="font-weight: 600;">35/50</span>
+              </div>
+            </div>
+            <div class="stops-list">
+              <div class="stop-item">
+                <span class="stop-time">08:00</span> Ankara Merkez
+              </div>
+              <div class="stop-item">
+                <span class="stop-time">10:30</span> Konya
+              </div>
+              <div class="stop-item">
+                <span class="stop-time">13:00</span> Afyon
+              </div>
+              <div class="stop-item">
+                <span class="stop-time">16:30</span> Pamukkale
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="screen-label">3️⃣ Detail Screen</div>
+      </div>
+
+      <!-- SEATS SCREEN -->
+      <div>
+        <div class="phone-frame">
+          <div class="notch"></div>
+          <div class="screen-content seats-screen">
+            <div class="seats-header">Koltuk Seç</div>
+            <div class="seat-legend">
+              <div class="legend-item legend-available">
+                <div class="legend-box"></div>
+                <span>Boş</span>
+              </div>
+              <div class="legend-item legend-selected">
+                <div class="legend-box"></div>
+                <span>Seçili</span>
+              </div>
+              <div class="legend-item legend-booked">
+                <div class="legend-box"></div>
+                <span>Dolu</span>
+              </div>
+            </div>
+            <div class="seat-grid">
+              <div class="seat">1</div>
+              <div class="seat selected">2</div>
+              <div class="seat">3</div>
+              <div class="seat booked">4</div>
+              <div class="seat">5</div>
+              <div class="seat">6</div>
+              <div class="seat booked">7</div>
+              <div class="seat">8</div>
+              <div class="seat">9</div>
+              <div class="seat">10</div>
+              <div class="seat">11</div>
+              <div class="seat">12</div>
+              <div class="seat booked">13</div>
+              <div class="seat">14</div>
+              <div class="seat">15</div>
+            </div>
+            <button class="btn" style="width: 100%;">Ödemeye Geç</button>
+          </div>
+        </div>
+        <div class="screen-label">4️⃣ Seats Screen</div>
+      </div>
+
+      <!-- PAYMENT SCREEN -->
+      <div>
+        <div class="phone-frame">
+          <div class="notch"></div>
+          <div class="screen-content payment-screen">
+            <div class="payment-header">⚠️ Demo Ödeme - Gerçek Para Alınmaz</div>
+            <div class="payment-info">
+              <div class="payment-row">
+                <span>Rota:</span>
+                <span style="font-weight: 600;">Ankara → Pamukkale</span>
+              </div>
+              <div class="payment-row">
+                <span>Koltuk:</span>
+                <span style="font-weight: 600;">2A</span>
+              </div>
+              <div class="payment-row">
+                <span>Kalkış:</span>
+                <span style="font-weight: 600;">08:00</span>
+              </div>
+              <div class="payment-row">
+                <span>Varış:</span>
+                <span style="font-weight: 600;">16:30</span>
+              </div>
+              <div class="payment-row payment-total">
+                <span>Toplam:</span>
+                <span>₺250</span>
+              </div>
+            </div>
+            <button class="btn" style="width: 100%; background: linear-gradient(135deg, #27ae60 0%, #229954 100%);">Satın Al</button>
+          </div>
+        </div>
+        <div class="screen-label">5️⃣ Payment Screen</div>
+      </div>
+
+      <!-- TRACKING SCREEN -->
+      <div>
+        <div class="phone-frame">
+          <div class="notch"></div>
+          <div class="screen-content tracking-screen">
+            <div class="pnr-box">
+              <div class="pnr-label">Rezervasyon Numaranız</div>
+              <div class="pnr-code">BOOK-2026-06-24</div>
+            </div>
+            <div class="map-placeholder">🗺️ Harita (Canlı Konum)</div>
+            <div class="stats-grid">
+              <div class="stat-box">
+                <div class="stat-value">65 km/s</div>
+                <div>Hız</div>
+              </div>
+              <div class="stat-box">
+                <div class="stat-value">Yolda</div>
+                <div>Durum</div>
+              </div>
+              <div class="stat-box">
+                <div class="stat-value">145 dk</div>
+                <div>ETA</div>
+              </div>
+              <div class="stat-box">
+                <div class="stat-value">39.9°N</div>
+                <div>Konum</div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="screen-label">6️⃣ Tracking Screen</div>
+      </div>
+    </div>
+
+    <!-- Teknik Bilgiler -->
+    <div style="background: white; padding: 30px; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
+      <h2 style="color: #1B7F3D; margin-bottom: 20px;">📱 Flutter Mobil Uygulaması - Teknik Yapı</h2>
+      
+      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 20px;">
+        <div>
+          <h3 style="color: #0E5323; margin-bottom: 10px;">📂 Proje Yapısı</h3>
+          <pre style="background: #f5f5f5; padding: 12px; border-radius: 6px; font-size: 12px; overflow-x: auto;">
+bus_tracker_mobile/
+├── lib/
+│   ├── main.dart (App Root)
+│   ├── screens/
+│   │   ├── login_screen.dart
+│   │   ├── search_screen.dart
+│   │   ├── detail_screen.dart
+│   │   ├── seats_screen.dart
+│   │   ├── payment_screen.dart
+│   │   └── tracking_screen.dart
+│   ├── models/
+│   │   └── models.dart
+│   └── services/
+│       └── api_service.dart
+├── android/
+├── pubspec.yaml
+└── README.md
+          </pre>
+        </div>
+
+        <div>
+          <h3 style="color: #0E5323; margin-bottom: 10px;">🎨 Tasarım Özelikleri</h3>
+          <ul style="line-height: 1.8; color: #333;">
+            <li>✅ Material Design 3</li>
+            <li>✅ Yeşil Tema (#1B7F3D)</li>
+            <li>✅ Gradient Arkaplanlar</li>
+            <li>✅ Responsive Layout</li>
+            <li>✅ Smooth Animasyonlar</li>
+            <li>✅ Hata Yönetimi</li>
+            <li>✅ Loading States</li>
+            <li>✅ Form Validation</li>
+          </ul>
+        </div>
+
+        <div>
+          <h3 style="color: #0E5323; margin-bottom: 10px;">🔌 Backend Entegrasyonu</h3>
+          <ul style="line-height: 1.8; color: #333;">
+            <li>✅ HTTP istek (POST /auth/login)</li>
+            <li>✅ HTTP istek (POST /auth/register)</li>
+            <li>✅ HTTP istek (GET /schedules)</li>
+            <li>✅ HTTP istek (GET /schedules/{id})</li>
+            <li>✅ HTTP istek (GET /schedules/{id}/seats)</li>
+            <li>✅ HTTP istek (POST /bookings/new)</li>
+            <li>✅ WebSocket (Real-time tracking)</li>
+            <li>✅ Error Handling</li>
+          </ul>
+        </div>
+
+        <div>
+          <h3 style="color: #0E5323; margin-bottom: 10px;">📱 Platformlar</h3>
+          <ul style="line-height: 1.8; color: #333;">
+            <li>✅ iOS (iPhone/iPad)</li>
+            <li>✅ Android (Telefon/Tablet)</li>
+            <li>✅ Web (Chrome, Firefox, Safari)</li>
+            <li>✅ Windows Desktop</li>
+            <li>✅ macOS Desktop</li>
+            <li>✅ Linux Desktop</li>
+          </ul>
+        </div>
+
+        <div>
+          <h3 style="color: #0E5323; margin-bottom: 10px;">📦 Paketler</h3>
+          <pre style="background: #f5f5f5; padding: 12px; border-radius: 6px; font-size: 11px; overflow-x: auto;">
+dependencies:
+  flutter: sdk: flutter
+  http: ^1.1.0
+  web_socket_channel
+  provider: ^6.0.0
+  intl: ^0.18.1
+          </pre>
+        </div>
+
+        <div>
+          <h3 style="color: #0E5323; margin-bottom: 10px;">🚀 Çalıştırma Komutları</h3>
+          <pre style="background: #f5f5f5; padding: 12px; border-radius: 6px; font-size: 11px; overflow-x: auto;">
+# Dependencies
+flutter pub get
+
+# Android
+flutter run
+
+# iOS
+flutter run -d iphone
+
+# Web
+flutter run -d chrome
+
+# Build APK
+flutter build apk
+          </pre>
+        </div>
+      </div>
+
+      <div style="margin-top: 20px; padding-top: 20px; border-top: 1px solid #eee;">
+        <h3 style="color: #0E5323; margin-bottom: 15px;">✨ Ekran Akışı</h3>
+        <div style="background: #f9f9f9; padding: 15px; border-radius: 6px; font-size: 13px; line-height: 2;">
+          <strong>1. Login Screen</strong> → Email/Telefon/TC ile giriş<br>
+          <strong>2. Search Screen</strong> → Otobüs seferi arama<br>
+          <strong>3. Detail Screen</strong> → Sefer detayları ve harita<br>
+          <strong>4. Seats Screen</strong> → Koltuk seçimi<br>
+          <strong>5. Payment Screen</strong> → Ödeme özeti<br>
+          <strong>6. Tracking Screen</strong> → PNR ve canlı konum takibi<br>
+        </div>
+      </div>
+
+      <div style="margin-top: 20px; padding-top: 20px; border-top: 1px solid #eee;">
+        <h3 style="color: #0E5323; margin-bottom: 15px;">📋 Dosya Konumları</h3>
+        <p style="color: #666; margin-bottom: 10px;"><strong>Mobil Uygulama:</strong></p>
+        <code style="background: #f5f5f5; padding: 8px; border-radius: 4px; display: block; margin-bottom: 15px;">
+          c:\Users\user\Desktop\coinscanner\bus_tracker_mobile\
+        </code>
+        <p style="color: #666; margin-bottom: 10px;"><strong>Web Uygulaması:</strong></p>
+        <code style="background: #f5f5f5; padding: 8px; border-radius: 4px; display: block;">
+          c:\Users\user\Desktop\coinscanner\backend\app\static\index.html
+        </code>
+      </div>
+
+      <div style="margin-top: 20px; padding: 15px; background: #dcfce7; border-left: 4px solid #22c55e; border-radius: 6px;">
+        <strong style="color: #166534;">✅ Tamamlanan Özellikler</strong>
+        <ul style="margin-top: 10px; margin-left: 20px; color: #166534;">
+          <li>6 Ekran (Login, Search, Detail, Seats, Payment, Tracking)</li>
+          <li>Backend API Entegrasyonu</li>
+          <li>Dinamik Form Doğrulaması</li>
+          <li>Hata Yönetimi</li>
+          <li>Loading States</li>
+          <li>Navigation Stack</li>
+          <li>Responsive Design</li>
+          <li>Material Design 3</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</body>
+</html>

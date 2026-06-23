@@ -1,0 +1,1810 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Seferim Nerede - Otobüs Takip Sistemi</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script src="/static/web-push-config.js"></script>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: linear-gradient(135deg, #10B981 0%, #059669 100%);
+      min-height: 100vh;
+      color: #1f2937;
+    }
+    .container { max-width: 1200px; margin: 0 auto; padding: 20px; }
+    .navbar {
+      background: rgba(16, 185, 129, 0.95);
+      backdrop-filter: blur(10px);
+      padding: 15px 20px;
+      border-radius: 12px;
+      margin-bottom: 20px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      box-shadow: 0 8px 32px rgba(0,0,0,0.15);
+      display: none;
+    }
+    .navbar.show { display: flex; }
+    .navbar h2 { color: white; font-size: 1.3rem; }
+    .navbar-actions { display: flex; gap: 12px; align-items: center; }
+    .nav-btn {
+      background: rgba(255, 255, 255, 0.2);
+      color: white;
+      border: none;
+      padding: 8px 16px;
+      border-radius: 8px;
+      cursor: pointer;
+      font-weight: 600;
+      transition: all 0.3s;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 0.9rem;
+    }
+    .nav-btn:hover { background: rgba(255, 255, 255, 0.3); transform: translateY(-2px); }
+    .logout-btn { background: #ef4444; }
+    .logout-btn:hover { background: #dc2626; }
+
+    .page { display: none; background: white; border-radius: 16px; padding: 30px; box-shadow: 0 8px 24px rgba(0,0,0,0.15); animation: slideIn 0.3s; min-height: 60vh; }
+    .page.active { display: block; }
+    @keyframes slideIn { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+
+    h1 { color: #10B981; margin-bottom: 20px; font-size: 2rem; }
+    h2 { color: #059669; margin: 20px 0 15px; }
+    label { display: block; margin-bottom: 8px; color: #1f2937; font-weight: 600; }
+    input, select, textarea {
+      width: 100%;
+      padding: 12px;
+      border: 2px solid #e5e7eb;
+      border-radius: 8px;
+      font-size: 1rem;
+      margin-bottom: 4px;
+    }
+    input:focus, select:focus { outline: none; border-color: #10B981; }
+    button {
+      background: linear-gradient(135deg, #10B981 0%, #059669 100%);
+      color: white;
+      border: none;
+      padding: 12px 24px;
+      border-radius: 8px;
+      font-weight: 600;
+      cursor: pointer;
+      font-size: 1rem;
+      transition: all 0.3s;
+      margin-right: 10px;
+    }
+    button:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3); }
+    button:active { transform: translateY(0); }
+    .btn-secondary { background: #9ca3af; }
+    .btn-secondary:hover { background: #6b7280; box-shadow: none; }
+    .btn-back { background: #64748b; padding: 8px 16px; font-size: 0.9rem; }
+    .btn-back:hover { background: #475569; }
+
+    .form-group { margin-bottom: 16px; }
+    .alert { padding: 12px; border-radius: 8px; margin-bottom: 16px; display: none; border-left: 4px solid; }
+    .alert.show { display: block; animation: slideDown 0.3s; }
+    @keyframes slideDown { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }
+    .alert.error { background: #fee2e2; color: #991b1b; border-left-color: #dc2626; }
+    .alert.success { background: #dcfce7; color: #166534; border-left-color: #22c55e; }
+    .alert.warning { background: #fef3c7; color: #92400e; border-left-color: #f59e0b; }
+
+    .tabs { display: flex; gap: 0; margin-bottom: 20px; border-bottom: 2px solid #e5e7eb; }
+    .tab-btn { background: none; border: none; padding: 12px 24px; font-weight: 600; color: #9ca3af; cursor: pointer; border-bottom: 3px solid transparent; transition: all 0.3s; }
+    .tab-btn.active { color: #10B981; border-bottom-color: #10B981; }
+
+    .radio-group { display: flex; gap: 20px; margin: 12px 0; flex-wrap: wrap; }
+    .radio-option { display: flex; align-items: center; gap: 8px; cursor: pointer; }
+    input[type="radio"] { width: 18px; height: 18px; accent-color: #10B981; cursor: pointer; }
+
+    .dashboard-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 20px; margin-top: 20px; }
+    .dashboard-card { background: linear-gradient(135deg, #10B981 0%, #059669 100%); color: white; padding: 20px; border-radius: 12px; cursor: pointer; transition: all 0.3s; }
+    .dashboard-card:hover { transform: translateY(-5px); box-shadow: 0 8px 20px rgba(16, 185, 129, 0.3); }
+    .dashboard-card-icon { font-size: 2.5rem; margin-bottom: 10px; }
+    .dashboard-card-title { font-size: 1.2rem; font-weight: 700; margin-bottom: 8px; }
+    .dashboard-card-desc { font-size: 0.9rem; opacity: 0.9; }
+
+    .trips-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 16px; margin-top: 20px; }
+    .trip-card { background: white; border: 2px solid #e5e7eb; border-radius: 12px; padding: 16px; cursor: pointer; transition: all 0.3s; }
+    .trip-card:hover { border-color: #10B981; box-shadow: 0 4px 12px rgba(16, 185, 129, 0.2); transform: translateY(-2px); }
+    .trip-card-route { font-size: 1.2rem; font-weight: 700; color: #10B981; margin-bottom: 8px; }
+    .trip-card-price { font-size: 1.3rem; font-weight: 700; color: #10B981; margin-top: 12px; }
+
+    .profile-card { background: #f9fafb; padding: 20px; border-radius: 12px; border-left: 4px solid #10B981; margin-bottom: 20px; }
+    .profile-card-label { color: #6b7280; font-size: 0.9rem; margin-bottom: 4px; }
+    .profile-card-value { color: #059669; font-size: 1.1rem; font-weight: 700; }
+
+    .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 1000; align-items: center; justify-content: center; }
+    .modal.show { display: flex; }
+    .modal-content { background: white; padding: 30px; border-radius: 16px; max-width: 500px; width: 90%; max-height: 80vh; overflow-y: auto; }
+
+    .password-strength { font-size: 0.85rem; margin-top: 4px; }
+    .password-weak { color: #dc2626; }
+    .password-medium { color: #f59e0b; }
+    .password-strong { color: #22c55e; }
+
+    .support-buttons { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; margin-top: 20px; }
+    .support-btn { padding: 16px; border: 2px solid #10B981; border-radius: 8px; cursor: pointer; text-align: center; transition: all 0.3s; }
+    .support-btn:hover { background: #10B981; color: white; }
+
+    .ticket-item { background: #f9fafb; padding: 16px; border-radius: 8px; border-left: 4px solid #10B981; margin-bottom: 12px; }
+    .ticket-header { display: flex; justify-content: space-between; margin-bottom: 8px; }
+    .ticket-pnr { font-weight: 700; color: #059669; font-family: monospace; }
+    .ticket-status { padding: 4px 12px; border-radius: 20px; font-size: 0.85rem; font-weight: 600; }
+    .ticket-status.confirmed { background: #dcfce7; color: #166534; }
+
+    .map-container { width: 100%; height: 400px; border-radius: 8px; overflow: hidden; margin-bottom: 20px; border: 2px solid #e5e7eb; }
+
+    .stops-list { margin-top: 20px; }
+    .stop-item { background: #f9fafb; padding: 16px; border-radius: 8px; border-left: 4px solid #10B981; margin-bottom: 12px; display: flex; gap: 16px; }
+    .stop-order { background: #10B981; color: white; width: 40px; height: 40px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: bold; min-width: 40px; }
+    .stop-info { flex: 1; }
+    .stop-name { font-size: 1.1rem; font-weight: 600; color: #059669; margin-bottom: 4px; }
+    .stop-time { color: #6b7280; font-size: 0.9rem; }
+
+    .seats-grid { display: grid; grid-template-columns: repeat(10, 1fr); gap: 8px; margin: 20px 0; }
+    .seat { width: 40px; height: 40px; border: 2px solid #10B981; border-radius: 6px; display: flex; align-items: center; justify-content: center; cursor: pointer; font-weight: 600; font-size: 0.75rem; transition: all 0.3s; background: white; color: #059669; }
+    .seat:hover { background: #f0f9ff; }
+    .seat.booked { background: #e5e7eb; color: #9ca3af; cursor: not-allowed; border-color: #d1d5db; }
+    .seat.selected { background: #10B981; color: white; border-color: #059669; }
+    
+    .legend { display: flex; gap: 20px; margin: 20px 0; flex-wrap: wrap; }
+    .legend-item { display: flex; align-items: center; gap: 8px; }
+    .legend-dot { width: 30px; height: 30px; border: 2px solid #10B981; border-radius: 4px; }
+    .legend-dot.booked { background: #e5e7eb; border-color: #d1d5db; }
+    .legend-dot.selected { background: #10B981; border-color: #059669; }
+
+    .payment-summary { background: #f9fafb; padding: 20px; border-radius: 12px; margin: 20px 0; }
+    .payment-row { display: flex; justify-content: space-between; margin-bottom: 12px; padding-bottom: 12px; border-bottom: 1px solid #e5e7eb; }
+    .payment-row:last-child { border-bottom: none; }
+    .payment-row-label { color: #6b7280; font-weight: 500; }
+    .payment-row-value { color: #059669; font-weight: 600; }
+    .payment-total { display: flex; justify-content: space-between; padding-top: 12px; border-top: 2px solid #10B981; font-size: 1.2rem; font-weight: 700; color: #10B981; margin-top: 16px; }
+
+    .pnr-box { background: linear-gradient(135deg, #10B981 0%, #059669 100%); color: white; padding: 20px; border-radius: 12px; text-align: center; margin: 20px 0; }
+    .pnr-box .label { font-size: 0.9rem; opacity: 0.9; }
+    .pnr-box .code { font-size: 1.5rem; font-family: monospace; font-weight: 700; margin-top: 8px; }
+
+    .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; margin: 20px 0; }
+    .stat-card { background: white; border: 2px solid #e5e7eb; border-radius: 8px; padding: 16px; text-align: center; }
+    .stat-label { color: #6b7280; font-size: 0.9rem; }
+    .stat-value { color: #10B981; font-size: 1.5rem; font-weight: 700; margin-top: 8px; }
+
+    .status-chip { display: inline-flex; align-items: center; gap: 8px; padding: 8px 12px; border-radius: 999px; font-weight: 700; font-size: 0.9rem; }
+    .status-chip.normal { background: #dcfce7; color: #166534; }
+    .status-chip.delay { background: #fee2e2; color: #991b1b; }
+    .status-chip.break { background: #fef3c7; color: #92400e; }
+
+    .timeline-box { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; padding: 14px; margin-top: 14px; }
+    .timeline-title { font-weight: 700; margin-bottom: 10px; color: #0f172a; }
+    .timeline-item { display: flex; gap: 10px; margin-bottom: 8px; font-size: 0.9rem; color: #334155; }
+    .timeline-dot { width: 8px; height: 8px; border-radius: 50%; background: #10B981; margin-top: 6px; }
+    .tracking-actions { display: flex; gap: 8px; margin-top: 12px; flex-wrap: wrap; }
+    .stack-panel { background: #f8fafc; border: 1px solid #dbeafe; border-radius: 12px; padding: 18px; margin-top: 18px; }
+    .stack-panel h3 { color: #0f172a; margin-bottom: 12px; }
+    .inline-actions { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 12px; }
+    .mono-box { font-family: Consolas, 'Courier New', monospace; background: #0f172a; color: #e2e8f0; padding: 12px; border-radius: 10px; word-break: break-all; min-height: 48px; }
+    .company-admin-item { border: 1px solid #d1fae5; border-radius: 10px; padding: 14px; margin-top: 12px; background: #ffffff; }
+    .company-admin-item.active { border-color: #10B981; box-shadow: 0 0 0 2px rgba(16, 185, 129, 0.12); }
+    .company-admin-meta { color: #64748b; font-size: 0.9rem; margin-top: 6px; }
+
+    @media (max-width: 768px) {
+      .dashboard-grid, .trips-grid { grid-template-columns: 1fr; }
+      .radio-group { flex-direction: column; }
+      .support-buttons { grid-template-columns: 1fr; }
+      .seats-grid { grid-template-columns: repeat(5, 1fr); }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="navbar" id="navbar">
+      <h2>🚌 Seferim Nerede</h2>
+      <div class="navbar-actions">
+        <button class="nav-btn" onclick="goBack()">← Geri</button>
+        <button class="nav-btn" onclick="goToProfile()">👤 Profil</button>
+        <button class="nav-btn logout-btn" onclick="logout()">Çıkış</button>
+      </div>
+    </div>
+
+    <!-- AUTH PAGE -->
+    <div class="page active" id="authPage">
+      <div style="max-width: 400px; margin: 0 auto; text-align: center;">
+        <h1 style="color: #10B981; font-size: 2.5rem; margin-bottom: 8px;">🚌</h1>
+        <h1>Seferim Nerede</h1>
+        <p style="color: #6b7280; font-size: 1.1rem; margin-bottom: 30px;">Otobüs Takip Sistemi</p>
+
+        <div class="tabs">
+          <button class="tab-btn active" onclick="switchAuthTab('login')">Giriş</button>
+          <button class="tab-btn" onclick="switchAuthTab('register')">Kayıt</button>
+        </div>
+
+        <!-- LOGIN TAB -->
+        <div id="loginTab">
+          <div id="loginAlert" class="alert"></div>
+          
+          <div class="form-group">
+            <label>Giriş Yöntemi</label>
+            <div class="radio-group">
+              <label class="radio-option"><input type="radio" name="loginType" value="email" checked onchange="updateLoginField()"> Email</label>
+              <label class="radio-option"><input type="radio" name="loginType" value="phone" onchange="updateLoginField()"> Telefon</label>
+              <label class="radio-option"><input type="radio" name="loginType" value="tc" onchange="updateLoginField()"> TC Kimlik</label>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label id="loginInputLabel">Email Adresiniz</label>
+            <input type="text" id="loginInput" placeholder="email@example.com">
+          </div>
+
+          <div class="form-group">
+            <label>Parola</label>
+            <input type="password" id="loginPassword" placeholder="••••••••" minlength="8">
+          </div>
+
+          <button onclick="handleLogin()" style="width: 100%;">Giriş Yap</button>
+        </div>
+
+        <!-- REGISTER TAB -->
+        <div id="registerTab" style="display: none;">
+          <div id="registerAlert" class="alert"></div>
+          
+          <div class="form-group">
+            <label>Kayıt Yöntemi</label>
+            <div class="radio-group">
+              <label class="radio-option"><input type="radio" name="registerType" value="email" checked onchange="updateRegisterFields()"> Email</label>
+              <label class="radio-option"><input type="radio" name="registerType" value="phone" onchange="updateRegisterFields()"> Telefon</label>
+              <label class="radio-option"><input type="radio" name="registerType" value="tc" onchange="updateRegisterFields()"> TC Kimlik</label>
+            </div>
+          </div>
+
+          <div class="form-group" id="emailGroup">
+            <label>Email Adresiniz</label>
+            <input type="email" id="registerEmail" placeholder="email@example.com">
+          </div>
+
+          <div class="form-group" id="phoneGroup" style="display: none;">
+            <label>Telefon Numarası</label>
+            <input type="tel" id="registerPhone" placeholder="05xxxxxxxxx">
+          </div>
+
+          <div class="form-group" id="tcGroup" style="display: none;">
+            <label>TC Kimlik Numarası</label>
+            <input type="text" id="registerTC" placeholder="11111111111" minlength="11" maxlength="11">
+          </div>
+
+          <div class="form-group">
+            <label>Parola</label>
+            <input type="password" id="registerPassword" placeholder="En az 8 karakter" minlength="8" onkeyup="checkPasswordStrength()">
+            <div id="passwordStrength" class="password-strength"></div>
+          </div>
+
+          <div class="form-group">
+            <label>Parolayı Tekrarla</label>
+            <input type="password" id="registerPasswordConfirm" placeholder="Aynı şifreyi yazınız" minlength="8" onkeyup="checkPasswordMatch()">
+            <small id="passwordMatch" style="color: #059669; display: none; margin-top: 4px;">✓ Parolalar eşleşiyor</small>
+            <small id="passwordMismatch" style="color: #ef4444; display: none; margin-top: 4px;">✗ Parolalar eşleşmiyor</small>
+          </div>
+
+          <button onclick="handleRegister()" style="width: 100%;">Hesap Oluştur</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- DASHBOARD PAGE -->
+    <div class="page" id="dashboardPage">
+      <h1>Ana Sayfa</h1>
+      <p style="color: #6b7280; margin-bottom: 20px;" id="dashboardGreeting">Hoş geldiniz!</p>
+      
+      <div class="dashboard-grid">
+        <div class="dashboard-card" onclick="goToSearch()">
+          <div class="dashboard-card-icon">🔍</div>
+          <div class="dashboard-card-title">Bilet Ara</div>
+          <div class="dashboard-card-desc">Otobüs seferi sorgula ve bilet satın al</div>
+        </div>
+        <div class="dashboard-card" onclick="goToMyTickets()">
+          <div class="dashboard-card-icon">🎫</div>
+          <div class="dashboard-card-title">Biletlerim</div>
+          <div class="dashboard-card-desc">Aldığınız biletleri görüntüleyin</div>
+        </div>
+        <div class="dashboard-card" onclick="goToProfile()">
+          <div class="dashboard-card-icon">👤</div>
+          <div class="dashboard-card-title">Profil</div>
+          <div class="dashboard-card-desc">Hesap bilgilerinizi yönetin</div>
+        </div>
+        <div class="dashboard-card" onclick="goToContact()">
+          <div class="dashboard-card-icon">💬</div>
+          <div class="dashboard-card-title">İletişim</div>
+          <div class="dashboard-card-desc">Destek al, geri bildirim gönder</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- SEARCH PAGE -->
+    <div class="page" id="searchPage">
+      <button class="btn-back" onclick="goToHome()">← Ana Sayfa</button>
+      <h1>Bilet Ara</h1>
+      
+      <div class="form-group">
+        <label>Rota (Örn: Ankara - İstanbul)</label>
+        <input type="text" id="searchRoute" placeholder="Kalkış - Varış">
+      </div>
+
+      <div class="form-group">
+        <label>Plaka (Örn: 34 ABC 1234)</label>
+        <input type="text" id="searchPlate" placeholder="Araç Plakası">
+      </div>
+
+      <div class="form-group">
+        <label>Firma Adı</label>
+        <input type="text" id="searchCompany" placeholder="Firma Adı">
+      </div>
+
+      <button onclick="searchTrips()" style="width: 100%;">Ara</button>
+
+      <div id="tripsContainer" class="trips-grid"></div>
+    </div>
+
+    <!-- MY TICKETS PAGE -->
+    <div class="page" id="ticketsPage">
+      <button class="btn-back" onclick="goToHome()">← Ana Sayfa</button>
+      <h1>Biletlerim</h1>
+      <div id="ticketsContainer" style="margin-top: 20px;"></div>
+    </div>
+
+    <!-- PROFILE PAGE -->
+    <div class="page" id="profilePage">
+      <button class="btn-back" onclick="goToHome()">← Ana Sayfa</button>
+      <h1>Hesap Ayarları</h1>
+      <div id="profileAlert" class="alert"></div>
+
+      <div class="profile-card">
+        <div class="profile-card-label">Kullanıcı ID</div>
+        <div class="profile-card-value" id="profileUserId">-</div>
+      </div>
+
+      <div class="profile-card">
+        <div class="profile-card-label">Email</div>
+        <div class="profile-card-value" id="profileEmail">-</div>
+      </div>
+
+      <div class="profile-card">
+        <div class="profile-card-label">Telefon</div>
+        <div class="profile-card-value" id="profilePhone">-</div>
+      </div>
+
+      <h2>Güvenlik</h2>
+      <button onclick="changePassword()" class="btn-secondary">Parolayı Değiştir</button>
+      <button onclick="enableTwoFactor()" class="btn-secondary">İki Faktörlü Kimlik Doğrulama</button>
+
+      <h2>Tercihler</h2>
+      <div class="form-group">
+        <label><input type="checkbox" checked> Bildirim Gönder</label>
+      </div>
+      <div class="form-group">
+        <label><input type="checkbox" checked> Email ile Güncellemeler</label>
+      </div>
+
+      <div class="stack-panel">
+        <h3>Web Push Durumu</h3>
+        <div class="profile-card" style="margin-bottom: 12px; background: white;">
+          <div class="profile-card-label">Tarayıcı / FCM Hazırlığı</div>
+          <div class="profile-card-value" id="webPushSupportStatus">Kontrol ediliyor...</div>
+        </div>
+        <div class="profile-card" style="margin-bottom: 12px; background: white;">
+          <div class="profile-card-label">Bildirim İzni</div>
+          <div class="profile-card-value" id="webPushPermissionStatus">-</div>
+        </div>
+        <div class="profile-card" style="background: white;">
+          <div class="profile-card-label">Son Web Push Token</div>
+          <div class="mono-box" id="webPushTokenPreview">Henüz alınmadı</div>
+        </div>
+        <div class="inline-actions">
+          <button onclick="manualRegisterWebPushToken()">Web Push Token Yenile</button>
+          <button onclick="sendCurrentUserPushTest()" class="btn-secondary">Kendime Test Bildirimi Gönder</button>
+        </div>
+      </div>
+
+      <div class="stack-panel">
+        <h3>Firma API Key Yönetimi</h3>
+        <div class="form-group">
+          <label>Admin API Key</label>
+          <input type="password" id="adminApiKeyInput" placeholder="x-admin-key değerini girin" oninput="persistAdminApiKey()">
+        </div>
+        <div class="inline-actions">
+          <button onclick="loadAdminCompanies()">Firmaları Yükle</button>
+          <button onclick="clearAdminApiKey()" class="btn-secondary">Anahtarı Temizle</button>
+        </div>
+        <div class="company-admin-meta" id="adminCompanyHint">Admin key girildikten sonra firmalar listelenir.</div>
+        <div id="adminCompaniesList"></div>
+        <div id="companyApiKeyManager" style="display:none; margin-top: 16px;">
+          <div class="form-group">
+            <label>Seçili Firma</label>
+            <input type="text" id="selectedCompanyName" readonly>
+          </div>
+          <div class="form-group">
+            <label>Özel API Key</label>
+            <input type="text" id="companyApiKeyInput" placeholder="Boş bırakırsanız sistem yeni key üretir">
+          </div>
+          <div class="profile-card" style="background: white; margin-bottom: 12px;">
+            <div class="profile-card-label">Kayıtlı Key Özeti</div>
+            <div class="mono-box" id="companyApiKeySummary">Firma seçiniz</div>
+          </div>
+          <div class="inline-actions">
+            <button onclick="saveCompanyApiKey()">Kaydet / Döndür</button>
+            <button onclick="copyCompanyApiKey()" class="btn-secondary">Son Üretilen Keyi Kopyala</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- CONTACT PAGE -->
+    <div class="page" id="contactPage">
+      <button class="btn-back" onclick="goToHome()">← Ana Sayfa</button>
+      <h1>İletişim & Destek</h1>
+      <div id="contactAlert" class="alert"></div>
+
+      <div class="support-buttons">
+        <div class="support-btn" onclick="startLiveChat()">
+          <div style="font-size: 2rem; margin-bottom: 8px;">💬</div>
+          <strong>Canlı Destek</strong>
+          <p style="font-size: 0.85rem; color: #6b7280; margin-top: 4px;">Anlık yardım alın</p>
+        </div>
+        <div class="support-btn" onclick="openContactForm()">
+          <div style="font-size: 2rem; margin-bottom: 8px;">📧</div>
+          <strong>Email Gönder</strong>
+          <p style="font-size: 0.85rem; color: #6b7280; margin-top: 4px;">Bize yazın</p>
+        </div>
+        <div class="support-btn" onclick="callSupport()">
+          <div style="font-size: 2rem; margin-bottom: 8px;">📞</div>
+          <strong>Telefon Desteği</strong>
+          <p style="font-size: 0.85rem; color: #6b7280; margin-top: 4px;">0444 XXX XXXX</p>
+        </div>
+        <div class="support-btn" onclick="openFAQ()">
+          <div style="font-size: 2rem; margin-bottom: 8px;">❓</div>
+          <strong>SSS</strong>
+          <p style="font-size: 0.85rem; color: #6b7280; margin-top: 4px;">Sık sorulan sorular</p>
+        </div>
+      </div>
+
+      <h2 style="margin-top: 40px;">Feedback Gönderin</h2>
+      <div class="form-group">
+        <label>Mesajınız</label>
+        <textarea id="feedbackMessage" placeholder="Görüşlerinizi bizimle paylaşın..." style="min-height: 150px; resize: vertical;"></textarea>
+      </div>
+      <button onclick="sendFeedback()">Gönder</button>
+    </div>
+
+    <!-- DETAIL PAGE -->
+    <div class="page" id="detailPage">
+      <button class="btn-back" onclick="goToSearch()">← Bilet Ara</button>
+      <h1 id="detailRoute">Rota Detayları</h1>
+      
+      <div style="background: linear-gradient(135deg, #10B981 0%, #059669 100%); color: white; padding: 20px; border-radius: 12px; margin-bottom: 20px;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+          <div>
+            <div style="font-size: 0.9rem; opacity: 0.9;">Kalkış</div>
+            <div style="font-size: 1.3rem; font-weight: 700;" id="detailDeparture">--:--</div>
+          </div>
+          <div style="flex: 1; text-align: center;">
+            <div style="font-size: 2rem;">→</div>
+          </div>
+          <div style="text-align: right;">
+            <div style="font-size: 0.9rem; opacity: 0.9;">Varış</div>
+            <div style="font-size: 1.3rem; font-weight: 700;" id="detailArrival">--:--</div>
+          </div>
+        </div>
+        <div style="border-top: 1px solid rgba(255,255,255,0.3); padding-top: 12px; margin-top: 12px;">
+          <div style="font-size: 0.9rem; opacity: 0.9;">Fiyat: <strong id="detailPrice" style="font-size: 1.1rem;">₺0</strong> | Plaka: <strong id="detailPlate">--</strong></div>
+        </div>
+      </div>
+
+      <h2>Duraklar</h2>
+      <div class="stops-list" id="stopsList"></div>
+
+      <h2 style="margin-top: 24px;">Rota Haritası</h2>
+      <div class="map-container" id="detailMap"></div>
+
+      <div style="margin-top: 30px;">
+        <h2>Koltuk Seçimi</h2>
+        <button onclick="goToSeats()" style="width: 100%;">Koltuk Seç →</button>
+      </div>
+    </div>
+
+    <!-- SEATS PAGE -->
+    <div class="page" id="seatsPage">
+      <button class="btn-back" onclick="goToDetail()">← Detaylar</button>
+      <h1>Koltuk Seçimi</h1>
+      
+      <div class="legend">
+        <div class="legend-item">
+          <div class="legend-dot"></div>
+          <span>Boş</span>
+        </div>
+        <div class="legend-item">
+          <div class="legend-dot booked"></div>
+          <span>Dolu</span>
+        </div>
+        <div class="legend-item">
+          <div class="legend-dot selected"></div>
+          <span>Seçili</span>
+        </div>
+      </div>
+
+      <div class="seats-grid" id="seatsGrid"></div>
+
+      <div style="margin-top: 30px; padding: 16px; background: #f9fafb; border-radius: 8px;">
+        <div style="margin-bottom: 12px;">
+          <strong>Seçilen Koltuk:</strong>
+          <div id="selectedSeatInfo" style="color: #10B981; font-size: 1.1rem; margin-top: 8px;">Seçilmedi</div>
+        </div>
+        <div style="margin-bottom: 20px;">
+          <label>Kalkış Noktası</label>
+          <select id="boardingPoint" style="width: 100%; padding: 10px; border: 2px solid #e5e7eb; border-radius: 8px; margin-bottom: 12px;">
+            <option value="">Seçiniz</option>
+          </select>
+        </div>
+        <div style="margin-bottom: 20px;">
+          <label>İniş Noktası</label>
+          <select id="alightingPoint" style="width: 100%; padding: 10px; border: 2px solid #e5e7eb; border-radius: 8px;">
+            <option value="">Seçiniz</option>
+          </select>
+        </div>
+        <button onclick="goToPayment()" style="width: 100%;" id="proceedPaymentBtn" disabled>Ödemeye Geç →</button>
+      </div>
+    </div>
+
+    <!-- PAYMENT PAGE -->
+    <div class="page" id="paymentPage">
+      <button class="btn-back" onclick="goToSeats()">← Koltuk Seçimi</button>
+      <h1>Ödeme Özeti</h1>
+
+      <div style="background: #fef3c7; border: 2px solid #f59e0b; border-radius: 8px; padding: 12px; margin-bottom: 20px; display: flex; gap: 12px;">
+        <span style="font-size: 1.2rem;">⚠️</span>
+        <div>
+          <strong style="color: #92400e;">Demo Modu</strong>
+          <div style="color: #b45309; font-size: 0.9rem;">Bu gerçek bir ödeme değildir. Demo verisiyle test edilmektedir.</div>
+        </div>
+      </div>
+
+      <div class="payment-summary">
+        <div class="payment-row">
+          <div class="payment-row-label">Rota</div>
+          <div class="payment-row-value" id="paymentRoute">-</div>
+        </div>
+        <div class="payment-row">
+          <div class="payment-row-label">Koltuk</div>
+          <div class="payment-row-value" id="paymentSeat">-</div>
+        </div>
+        <div class="payment-row">
+          <div class="payment-row-label">Kalkış</div>
+          <div class="payment-row-value" id="paymentBoarding">-</div>
+        </div>
+        <div class="payment-row">
+          <div class="payment-row-label">İniş</div>
+          <div class="payment-row-value" id="paymentAlighting">-</div>
+        </div>
+        <div class="payment-row">
+          <div class="payment-row-label">Yolcu Adı</div>
+          <div class="payment-row-value" id="paymentPassenger">-</div>
+        </div>
+        <div class="payment-total">
+          <span>Toplam Ücret</span>
+          <span id="paymentTotal">₺0</span>
+        </div>
+      </div>
+
+      <div style="margin: 20px 0;">
+        <label>Kredi Kartı Sahibi Adı</label>
+        <input type="text" id="cardholderName" placeholder="Ad Soyad">
+      </div>
+
+      <div style="margin: 20px 0;">
+        <label>Kredi Kartı Numarası</label>
+        <input type="text" id="cardNumber" placeholder="1234 5678 9012 3456" maxlength="19">
+      </div>
+
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin: 20px 0;">
+        <div>
+          <label>Ay/Yıl</label>
+          <input type="text" id="cardExpiry" placeholder="MM/YY" maxlength="5">
+        </div>
+        <div>
+          <label>CVV</label>
+          <input type="text" id="cardCVV" placeholder="123" maxlength="3">
+        </div>
+      </div>
+
+      <button onclick="completeBooking()" style="width: 100%;">Satın Al</button>
+    </div>
+
+    <!-- TRACKING PAGE -->
+    <div class="page" id="trackingPage">
+      <button class="btn-back" onclick="goToHome()">← Ana Sayfa</button>
+      <h1>Canlı Takip</h1>
+
+      <div style="background: #dcfce7; border: 2px solid #22c55e; border-radius: 8px; padding: 16px; margin-bottom: 20px; display: flex; gap: 12px;">
+        <span style="font-size: 1.3rem;">✓</span>
+        <div>
+          <strong style="color: #166534;">Rezervasyon Başarılı!</strong>
+          <div style="color: #166534; font-size: 0.95rem; margin-top: 4px;">
+            PNR: <strong id="trackingPNR" style="font-family: monospace;">BOOK-2026-06-24-00001</strong>
+          </div>
+        </div>
+      </div>
+
+      <div class="payment-summary">
+        <div class="payment-row">
+          <div class="payment-row-label">Rota</div>
+          <div class="payment-row-value" id="trackingRoute">-</div>
+        </div>
+        <div class="payment-row">
+          <div class="payment-row-label">Koltuk</div>
+          <div class="payment-row-value" id="trackingSeat">-</div>
+        </div>
+        <div class="payment-row">
+          <div class="payment-row-label">Plaka</div>
+          <div class="payment-row-value" id="trackingPlate">-</div>
+        </div>
+        <div class="payment-row">
+          <div class="payment-row-label">Sefer Saati</div>
+          <div class="payment-row-value" id="trackingTime">-</div>
+        </div>
+      </div>
+
+      <h2 style="margin-top: 30px;">Araç Durum</h2>
+      <div id="trackingStatusChip" class="status-chip normal" style="margin-bottom: 12px;">Normal Sefer</div>
+      <div class="stats-grid">
+        <div class="stat-card">
+          <div class="stat-label">Hız</div>
+          <div class="stat-value" id="trackingSpeed">0 km/h</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Durum</div>
+          <div class="stat-value" style="color: #f59e0b; font-size: 1.2rem;" id="trackingStatus">Hazırlanıyor</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">ETA</div>
+          <div class="stat-value" id="trackingETA">-- dk</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Konum</div>
+          <div class="stat-value" style="font-size: 1rem;" id="trackingLocation">Güncelleniyor...</div>
+        </div>
+      </div>
+
+      <div class="map-container" id="trackingMap">
+        <div style="width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; background: #f3f4f6;">
+          <div style="text-align: center; color: #6b7280;">
+            <div style="font-size: 3rem; margin-bottom: 12px;">🗺️</div>
+            <div>Harita Entegrasyonu</div>
+            <div style="font-size: 0.85rem; margin-top: 8px;">Google Maps/Leaflet entegre edilecek</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="tracking-actions">
+        <button onclick="sendBreakEvent('start')" class="btn-secondary" style="margin-right: 0;">Mola Başlat</button>
+        <button onclick="sendBreakEvent('end')" class="btn-secondary" style="margin-right: 0;">Mola Bitir</button>
+      </div>
+
+      <div class="timeline-box">
+        <div class="timeline-title">Mola / Olay Geçmişi</div>
+        <div id="trackingTimeline"></div>
+      </div>
+
+      <button class="btn-secondary" onclick="goToHome()" style="width: 100%; margin-top: 20px;">Bilet Sayfasına Dön</button>
+    </div>
+  </div>
+
+  <script>
+    // Global Variables
+    let currentUser = null;
+    let currentSchedule = null;
+    let selectedSeat = null;
+    let currentBooking = null;
+    let detailMap = null;
+    let detailRouteLayer = null;
+    let detailStopMarkers = [];
+    let trackingMap = null;
+    let trackingRouteLayer = null;
+    let trackingBusMarker = null;
+    let trackingSocket = null;
+    let trackingPingInterval = null;
+    let trackingSimulationInterval = null;
+    let trackingRoutePoints = [];
+    let trackingSimIndex = 0;
+    let trackingEvents = [];
+    let adminCompanies = [];
+    let selectedAdminCompanyId = null;
+    let lastGeneratedCompanyApiKey = '';
+    let latestWebPushToken = '';
+    let webPushRegistrationPromise = null;
+    let firebaseMessagingState = null;
+    const telemetryApiKey = 'demo-telemetry-key';
+    const webPushConfig = window.__WEB_PUSH_CONFIG__ || null;
+
+    // Initialize
+    window.addEventListener('DOMContentLoaded', () => {
+      showPage('authPage');
+      document.getElementById('navbar').classList.remove('show');
+      updateLoginField();
+    });
+
+    // Page Navigation
+    function showPage(pageName) {
+      if (pageName !== 'trackingPage') {
+        stopTrackingRealtime();
+      }
+
+      document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+      document.getElementById(pageName).classList.add('active');
+      const navbar = document.getElementById('navbar');
+      if (pageName === 'authPage') {
+        navbar.classList.remove('show');
+      } else {
+        navbar.classList.add('show');
+      }
+      window.scrollTo(0, 0);
+    }
+
+    function goToHome() { showPage('dashboardPage'); }
+    function goToSearch() { showPage('searchPage'); }
+    function goToMyTickets() { showPage('ticketsPage'); loadTickets(); }
+    function goToProfile() { loadProfile(); showPage('profilePage'); }
+    function goToContact() { showPage('contactPage'); }
+    function goToDetail() { showPage('detailPage'); }
+    function goToSeats() { loadSeatsGrid(); showPage('seatsPage'); }
+    function goToPayment() { loadPaymentSummary(); showPage('paymentPage'); }
+    function goToTracking() { loadTrackingInfo(); showPage('trackingPage'); }
+    function goBack() { window.history.back(); }
+
+    // Alerts
+    function showAlert(elementId, message, type = 'success') {
+      const alert = document.getElementById(elementId);
+      if (!alert) return;
+      alert.textContent = message;
+      alert.className = `alert ${type} show`;
+      setTimeout(() => alert.classList.remove('show'), 5000);
+    }
+
+    // Auth Tabs
+    function switchAuthTab(tab) {
+      document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+      document.querySelectorAll('[id$="Tab"]').forEach(t => t.style.display = 'none');
+      if (tab === 'login') {
+        document.querySelectorAll('.tab-btn')[0].classList.add('active');
+        document.getElementById('loginTab').style.display = 'block';
+      } else {
+        document.querySelectorAll('.tab-btn')[1].classList.add('active');
+        document.getElementById('registerTab').style.display = 'block';
+      }
+    }
+
+    function updateRegisterFields() {
+      const type = document.querySelector('input[name="registerType"]:checked').value;
+      document.getElementById('emailGroup').style.display = type === 'email' ? 'block' : 'none';
+      document.getElementById('phoneGroup').style.display = type === 'phone' ? 'block' : 'none';
+      document.getElementById('tcGroup').style.display = type === 'tc' ? 'block' : 'none';
+    }
+
+    function updateLoginField() {
+      const type = document.querySelector('input[name="loginType"]:checked').value;
+      const label = document.getElementById('loginInputLabel');
+      const input = document.getElementById('loginInput');
+
+      if (type === 'email') {
+        label.textContent = 'Email Adresiniz';
+        input.placeholder = 'email@example.com';
+      } else if (type === 'phone') {
+        label.textContent = 'Telefon Numaranız';
+        input.placeholder = '05xxxxxxxxx';
+      } else {
+        label.textContent = 'TC Kimlik Numaranız';
+        input.placeholder = '11111111111';
+      }
+
+      input.value = '';
+    }
+
+    function buildFallbackWebPushToken(userId) {
+      return `web_${userId}_${Date.now()}`;
+    }
+
+    function persistAdminApiKey() {
+      const value = document.getElementById('adminApiKeyInput')?.value?.trim() || '';
+      if (value) {
+        localStorage.setItem('adminApiKey', value);
+      } else {
+        localStorage.removeItem('adminApiKey');
+      }
+    }
+
+    function clearAdminApiKey() {
+      localStorage.removeItem('adminApiKey');
+      const input = document.getElementById('adminApiKeyInput');
+      if (input) input.value = '';
+      adminCompanies = [];
+      selectedAdminCompanyId = null;
+      document.getElementById('adminCompaniesList').innerHTML = '';
+      document.getElementById('companyApiKeyManager').style.display = 'none';
+      document.getElementById('adminCompanyHint').textContent = 'Admin key temizlendi.';
+    }
+
+    function getAdminApiKey() {
+      const liveValue = document.getElementById('adminApiKeyInput')?.value?.trim();
+      return liveValue || localStorage.getItem('adminApiKey') || '';
+    }
+
+    function getFirebaseWebPushConfig() {
+      const firebase = webPushConfig?.firebase;
+      if (!firebase) return null;
+
+      const requiredFields = ['apiKey', 'authDomain', 'projectId', 'messagingSenderId', 'appId', 'vapidKey'];
+      const hasRequiredFields = requiredFields.every(field => Boolean(firebase[field]));
+      return hasRequiredFields ? firebase : null;
+    }
+
+    async function ensureWebPushServiceWorker() {
+      if (!('serviceWorker' in navigator)) {
+        return null;
+      }
+
+      if (!webPushRegistrationPromise) {
+        webPushRegistrationPromise = navigator.serviceWorker.register('/static/firebase-messaging-sw.js');
+      }
+
+      return webPushRegistrationPromise;
+    }
+
+    async function getFirebaseMessagingState() {
+      if (firebaseMessagingState) {
+        return firebaseMessagingState;
+      }
+
+      const firebaseConfig = getFirebaseWebPushConfig();
+      if (!firebaseConfig) {
+        return null;
+      }
+
+      const [{ initializeApp, getApps }, messagingModule] = await Promise.all([
+        import('https://www.gstatic.com/firebasejs/10.13.2/firebase-app.js'),
+        import('https://www.gstatic.com/firebasejs/10.13.2/firebase-messaging.js')
+      ]);
+
+      if (typeof messagingModule.isSupported === 'function') {
+        const supported = await messagingModule.isSupported();
+        if (!supported) {
+          return null;
+        }
+      }
+
+      const app = getApps().length ? getApps()[0] : initializeApp(firebaseConfig);
+      firebaseMessagingState = {
+        app,
+        getMessaging: messagingModule.getMessaging,
+        getToken: messagingModule.getToken,
+        vapidKey: firebaseConfig.vapidKey,
+      };
+      return firebaseMessagingState;
+    }
+
+    async function resolveWebPushToken(userId) {
+      const fallbackToken = webPushConfig?.token || buildFallbackWebPushToken(userId);
+
+      if (!('Notification' in window)) {
+        return fallbackToken;
+      }
+
+      const permission = await Notification.requestPermission();
+      if (permission !== 'granted') {
+        return fallbackToken;
+      }
+
+      try {
+        const registration = await ensureWebPushServiceWorker();
+        const messagingState = await getFirebaseMessagingState();
+        if (!registration || !messagingState) {
+          return fallbackToken;
+        }
+
+        const messaging = messagingState.getMessaging(messagingState.app);
+        const token = await messagingState.getToken(messaging, {
+          vapidKey: messagingState.vapidKey,
+          serviceWorkerRegistration: registration,
+        });
+
+        latestWebPushToken = token || fallbackToken;
+        return latestWebPushToken;
+      } catch (error) {
+        console.warn('Web push token fallback kullanildi:', error);
+        latestWebPushToken = fallbackToken;
+        return fallbackToken;
+      }
+    }
+
+    async function updateWebPushDiagnostics() {
+      const permissionStatus = 'Notification' in window ? Notification.permission : 'unsupported';
+      const hasConfig = Boolean(getFirebaseWebPushConfig());
+      const supportEl = document.getElementById('webPushSupportStatus');
+      const permissionEl = document.getElementById('webPushPermissionStatus');
+      const tokenEl = document.getElementById('webPushTokenPreview');
+      if (!supportEl || !permissionEl || !tokenEl) return;
+
+      supportEl.textContent = hasConfig ? 'Firebase Web Push hazır' : 'Fallback modunda çalışıyor';
+      permissionEl.textContent = permissionStatus;
+      tokenEl.textContent = latestWebPushToken || webPushConfig?.token || 'Henüz alınmadı';
+    }
+
+    // Password Strength Check
+    function checkPasswordStrength() {
+      const pwd = document.getElementById('registerPassword').value;
+      const strengthDiv = document.getElementById('passwordStrength');
+      if (!pwd) { strengthDiv.innerHTML = ''; return; }
+      let strength = 'weak';
+      if (pwd.length >= 8 && /[A-Z]/.test(pwd) && /[0-9]/.test(pwd) && /[!@#$%^&*]/.test(pwd)) strength = 'strong';
+      else if (pwd.length >= 8 && /[A-Z]/.test(pwd) && /[0-9]/.test(pwd)) strength = 'medium';
+      const messages = { weak: '⚠️ Zayıf', medium: '✓ Orta', strong: '✓✓ Güçlü' };
+      strengthDiv.className = `password-strength password-${strength}`;
+      strengthDiv.textContent = messages[strength] + ' - En az 8 karakter, büyük harf, rakam ve sembol kullanın';
+    }
+
+    // Password Match Check
+    function checkPasswordMatch() {
+      const pwd = document.getElementById('registerPassword').value;
+      const pwdConfirm = document.getElementById('registerPasswordConfirm').value;
+      const matchMsg = document.getElementById('passwordMatch');
+      const mismatchMsg = document.getElementById('passwordMismatch');
+      
+      if (!pwd || !pwdConfirm) {
+        matchMsg.style.display = 'none';
+        mismatchMsg.style.display = 'none';
+        return;
+      }
+      
+      if (pwd === pwdConfirm && pwd.length >= 8) {
+        matchMsg.style.display = 'block';
+        mismatchMsg.style.display = 'none';
+      } else {
+        matchMsg.style.display = 'none';
+        mismatchMsg.style.display = 'block';
+      }
+    }
+
+    // Login
+    async function handleLogin() {
+      const type = document.querySelector('input[name="loginType"]:checked').value;
+      const identifier = document.getElementById('loginInput').value.trim();
+      const password = document.getElementById('loginPassword').value.trim();
+
+      if (!identifier || !password) {
+        showAlert('loginAlert', 'Lütfen bilgileri doldurunuz', 'error');
+        return;
+      }
+
+      if (password.length < 8) {
+        showAlert('loginAlert', 'Parola en az 8 karakter olmalıdır', 'error');
+        return;
+      }
+
+      try {
+        const response = await fetch('/auth/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email_or_phone_or_tc: identifier })
+        });
+
+        const data = await response.json();
+
+        if (response.ok) {
+          currentUser = data;
+          localStorage.setItem('userToken', data.token);
+          await registerWebPushToken(data);
+          showAlert('loginAlert', 'Giriş başarılı!', 'success');
+          setTimeout(() => {
+            document.getElementById('loginInput').value = '';
+            document.getElementById('loginPassword').value = '';
+            showPage('dashboardPage');
+            document.getElementById('dashboardGreeting').textContent = `Hoş geldiniz, ${data.email || data.phone || data.tc_id}!`;
+          }, 500);
+        } else {
+          showAlert('loginAlert', data.detail || 'Giriş başarısız', 'error');
+        }
+      } catch (err) {
+        showAlert('loginAlert', 'Hata: ' + err.message, 'error');
+      }
+    }
+
+    // Register
+    async function handleRegister() {
+      const type = document.querySelector('input[name="registerType"]:checked').value;
+      const password = document.getElementById('registerPassword').value.trim();
+      const passwordConfirm = document.getElementById('registerPasswordConfirm').value.trim();
+
+      if (password !== passwordConfirm) {
+        showAlert('registerAlert', 'Parolalar eşleşmiyor', 'error');
+        return;
+      }
+
+      if (password.length < 8) {
+        showAlert('registerAlert', 'Parola en az 8 karakter olmalıdır', 'error');
+        return;
+      }
+
+      let body = {};
+      if (type === 'email') {
+        const email = document.getElementById('registerEmail').value.trim();
+        if (!email) { showAlert('registerAlert', 'Email giriniz', 'error'); return; }
+        body = { email };
+      } else if (type === 'phone') {
+        const phone = document.getElementById('registerPhone').value.trim();
+        if (!phone || phone.length < 10) { showAlert('registerAlert', 'Geçerli telefon giriniz', 'error'); return; }
+        body = { phone };
+      } else {
+        const tc = document.getElementById('registerTC').value.trim();
+        if (!tc || tc.length !== 11) { showAlert('registerAlert', 'TC Kimlik 11 haneli olmalıdır', 'error'); return; }
+        body = { tc_id: tc };
+      }
+
+      try {
+        const response = await fetch('/auth/register', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(body)
+        });
+
+        const data = await response.json();
+
+        if (response.ok) {
+          currentUser = data;
+          localStorage.setItem('userToken', data.token);
+          await registerWebPushToken(data);
+          showAlert('registerAlert', 'Hesap oluşturuldu!', 'success');
+          setTimeout(() => {
+            switchAuthTab('login');
+            document.getElementById('loginInput').value = '';
+            document.getElementById('loginPassword').value = '';
+            showPage('dashboardPage');
+            document.getElementById('dashboardGreeting').textContent = `Hoş geldiniz, ${data.email || data.phone || data.tc_id}!`;
+          }, 500);
+        } else {
+          showAlert('registerAlert', data.detail || 'Kayıt başarısız', 'error');
+        }
+      } catch (err) {
+        showAlert('registerAlert', 'Hata: ' + err.message, 'error');
+      }
+    }
+
+    async function registerWebPushToken(userData) {
+      try {
+        const userId = userData?.user_id || userData?.id;
+        if (!userId) return;
+        const token = await resolveWebPushToken(userId);
+        latestWebPushToken = token;
+
+        await fetch('/push/register-token', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            user_id: userId,
+            platform: 'web',
+            token
+          })
+        });
+      } catch (_) {
+        // Push token kaydı başarısız olsa da login/register akışını bozma.
+      } finally {
+        updateWebPushDiagnostics();
+      }
+    }
+
+    async function manualRegisterWebPushToken() {
+      if (!currentUser) {
+        showAlert('profileAlert', 'Önce giriş yapmanız gerekiyor', 'error');
+        return;
+      }
+      await registerWebPushToken(currentUser);
+      showAlert('profileAlert', 'Web push token yenilendi', 'success');
+    }
+
+    async function sendCurrentUserPushTest() {
+      if (!currentUser) {
+        showAlert('profileAlert', 'Push testi için önce giriş yapın', 'error');
+        return;
+      }
+
+      try {
+        const response = await fetch('/push/test', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            user_id: currentUser.user_id || currentUser.id,
+            title: 'Seferim Nerede',
+            body: 'Bu bir web push test bildirimidir.'
+          })
+        });
+        const data = await response.json();
+        if (!response.ok) {
+          showAlert('profileAlert', data.detail || data.error || 'Push testi başarısız', 'error');
+          return;
+        }
+        showAlert('profileAlert', `Push test sonucu: ${data.provider} / hedef ${data.target_count}`, 'success');
+      } catch (err) {
+        showAlert('profileAlert', 'Push test hatası: ' + err.message, 'error');
+      }
+    }
+
+    function renderAdminCompanies() {
+      const container = document.getElementById('adminCompaniesList');
+      if (!container) return;
+
+      if (!adminCompanies.length) {
+        container.innerHTML = '<div class="company-admin-meta">Henüz firma yüklenmedi.</div>';
+        return;
+      }
+
+      container.innerHTML = adminCompanies.map(company => `
+        <div class="company-admin-item ${selectedAdminCompanyId === company.company_id ? 'active' : ''}">
+          <div style="display:flex; justify-content:space-between; gap:12px; align-items:center; flex-wrap:wrap;">
+            <div>
+              <strong>${company.company_name}</strong>
+              <div class="company-admin-meta">ID: ${company.company_id} | Key: ${company.masked_api_key || 'Yok'} | Kaynak: ${company.source || 'tanımsız'}</div>
+            </div>
+            <button onclick="selectAdminCompany(${company.company_id})">Yönet</button>
+          </div>
+        </div>
+      `).join('');
+    }
+
+    async function loadAdminCompanies() {
+      const adminKey = getAdminApiKey();
+      if (!adminKey) {
+        showAlert('profileAlert', 'Admin API key girmeniz gerekiyor', 'error');
+        return;
+      }
+
+      try {
+        const response = await fetch('/companies', {
+          headers: { 'x-admin-key': adminKey }
+        });
+        const data = await response.json();
+        if (!response.ok) {
+          showAlert('profileAlert', data.detail || data.error || 'Firma listesi alınamadı', 'error');
+          return;
+        }
+        adminCompanies = data.items || [];
+        document.getElementById('adminCompanyHint').textContent = `${adminCompanies.length} firma yüklendi.`;
+        renderAdminCompanies();
+      } catch (err) {
+        showAlert('profileAlert', 'Firma listesi hatası: ' + err.message, 'error');
+      }
+    }
+
+    async function selectAdminCompany(companyId) {
+      selectedAdminCompanyId = companyId;
+      renderAdminCompanies();
+      const company = adminCompanies.find(item => item.company_id === companyId);
+      document.getElementById('companyApiKeyManager').style.display = 'block';
+      document.getElementById('selectedCompanyName').value = company?.company_name || '';
+      document.getElementById('companyApiKeyInput').value = '';
+      await refreshSelectedCompanyApiKey();
+    }
+
+    async function refreshSelectedCompanyApiKey() {
+      const adminKey = getAdminApiKey();
+      if (!selectedAdminCompanyId || !adminKey) return;
+
+      try {
+        const response = await fetch(`/companies/${selectedAdminCompanyId}/api-key`, {
+          headers: { 'x-admin-key': adminKey }
+        });
+        const data = await response.json();
+        if (!response.ok) {
+          showAlert('profileAlert', data.detail || data.error || 'Firma key özeti alınamadı', 'error');
+          return;
+        }
+        document.getElementById('companyApiKeySummary').textContent = JSON.stringify(data, null, 2);
+      } catch (err) {
+        showAlert('profileAlert', 'Firma key özeti hatası: ' + err.message, 'error');
+      }
+    }
+
+    async function saveCompanyApiKey() {
+      const adminKey = getAdminApiKey();
+      if (!selectedAdminCompanyId || !adminKey) {
+        showAlert('profileAlert', 'Önce admin key ve firma seçimi yapın', 'error');
+        return;
+      }
+
+      const customKey = document.getElementById('companyApiKeyInput').value.trim();
+      try {
+        const response = await fetch(`/companies/${selectedAdminCompanyId}/api-key`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'x-admin-key': adminKey
+          },
+          body: JSON.stringify(customKey ? { api_key: customKey } : {})
+        });
+        const data = await response.json();
+        if (!response.ok) {
+          showAlert('profileAlert', data.detail || data.error || 'Firma key kaydedilemedi', 'error');
+          return;
+        }
+        lastGeneratedCompanyApiKey = data.api_key || '';
+        showAlert('profileAlert', 'Firma API key kaydedildi', 'success');
+        await loadAdminCompanies();
+        await refreshSelectedCompanyApiKey();
+      } catch (err) {
+        showAlert('profileAlert', 'Firma key kaydetme hatası: ' + err.message, 'error');
+      }
+    }
+
+    async function copyCompanyApiKey() {
+      if (!lastGeneratedCompanyApiKey) {
+        showAlert('profileAlert', 'Kopyalanacak yeni bir key yok', 'warning');
+        return;
+      }
+      try {
+        await navigator.clipboard.writeText(lastGeneratedCompanyApiKey);
+        showAlert('profileAlert', 'Firma API key panoya kopyalandı', 'success');
+      } catch (_) {
+        showAlert('profileAlert', 'Tarayıcı panoya kopyalamayı engelledi', 'warning');
+      }
+    }
+
+    // Search Trips
+    async function searchTrips() {
+      try {
+        const response = await fetch('/schedules/search');
+        const trips = await response.json();
+
+        const container = document.getElementById('tripsContainer');
+        container.innerHTML = '';
+
+        trips.forEach(trip => {
+          const card = document.createElement('div');
+          card.className = 'trip-card';
+          card.onclick = () => selectTrip(trip);
+          card.innerHTML = `
+            <div class="trip-card-route">${trip.route_name}</div>
+            <div>🕐 ${trip.departure_time} - 🕕 ${trip.arrival_time}</div>
+            <div>🚍 ${trip.vehicle_id} | 💺 ${trip.total_seats} koltuk</div>
+            <div class="trip-card-price">₺${trip.price}</div>
+            <div style="font-size: 0.9rem; color: #059669; margin-top: 8px;">${trip.company.name}</div>
+          `;
+          container.appendChild(card);
+        });
+      } catch (err) {
+        showAlert('searchAlert', 'Sefer arama hatası: ' + err.message, 'error');
+      }
+    }
+
+    async function selectTrip(schedule) {
+      try {
+        currentSchedule = schedule;
+        
+        // Fetch detailed schedule with stops
+        const response = await fetch(`/schedules/${schedule.id}`);
+        if (response.ok) {
+          currentSchedule = await response.json();
+        }
+        
+        loadDetailPage();
+        showPage('detailPage');
+      } catch (err) {
+        console.error('Select trip error:', err);
+      }
+    }
+
+    // Load Detail Page
+    function loadDetailPage() {
+      if (!currentSchedule) return;
+      document.getElementById('detailRoute').textContent = currentSchedule.route_name;
+      document.getElementById('detailDeparture').textContent = currentSchedule.departure_time;
+      document.getElementById('detailArrival').textContent = currentSchedule.arrival_time;
+      document.getElementById('detailPrice').textContent = '₺' + currentSchedule.price;
+      document.getElementById('detailPlate').textContent = currentSchedule.vehicle_id;
+
+      // Load stops
+      const stopsList = document.getElementById('stopsList');
+      stopsList.innerHTML = '';
+      if (currentSchedule.stops && Array.isArray(currentSchedule.stops)) {
+        currentSchedule.stops.forEach((stop, index) => {
+          const stopDiv = document.createElement('div');
+          stopDiv.className = 'stop-item';
+          stopDiv.innerHTML = `
+            <div class="stop-order">${index + 1}</div>
+            <div class="stop-info">
+              <div class="stop-name">${stop.name}</div>
+              <div class="stop-time">🕐 ${stop.arrival_time}</div>
+            </div>
+          `;
+          stopsList.appendChild(stopDiv);
+        });
+      }
+
+      initDetailMap();
+    }
+
+    function initDetailMap() {
+      const mapEl = document.getElementById('detailMap');
+      if (!mapEl || !currentSchedule?.stops?.length) {
+        if (mapEl) mapEl.innerHTML = '<div style="padding: 24px; color: #6b7280; text-align: center;">Harita verisi bulunamadı</div>';
+        return;
+      }
+
+      if (!detailMap) {
+        detailMap = L.map('detailMap');
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+          attribution: '&copy; OpenStreetMap contributors'
+        }).addTo(detailMap);
+      }
+
+      if (detailRouteLayer) {
+        detailMap.removeLayer(detailRouteLayer);
+        detailRouteLayer = null;
+      }
+      detailStopMarkers.forEach(m => detailMap.removeLayer(m));
+      detailStopMarkers = [];
+
+      const routePoints = currentSchedule.stops
+        .filter(s => typeof s.lat === 'number' && typeof s.lon === 'number')
+        .map(s => [s.lat, s.lon]);
+
+      if (!routePoints.length) {
+        mapEl.innerHTML = '<div style="padding: 24px; color: #6b7280; text-align: center;">Durak koordinatı bulunamadı</div>';
+        return;
+      }
+
+      detailRouteLayer = L.polyline(routePoints, { color: '#10B981', weight: 5, opacity: 0.85 }).addTo(detailMap);
+
+      currentSchedule.stops.forEach((stop, idx) => {
+        if (typeof stop.lat !== 'number' || typeof stop.lon !== 'number') return;
+        const marker = L.marker([stop.lat, stop.lon]).addTo(detailMap);
+        marker.bindPopup(`<strong>${idx + 1}. ${stop.name}</strong><br>Varış: ${stop.arrival_time || '-'}<br>Kalkış: ${stop.departure_time || '-'}`);
+        detailStopMarkers.push(marker);
+      });
+
+      detailMap.fitBounds(detailRouteLayer.getBounds(), { padding: [20, 20] });
+      setTimeout(() => detailMap.invalidateSize(), 100);
+    }
+
+    // Load Seats Grid
+    function loadSeatsGrid() {
+      if (!currentSchedule) return;
+      const seatsGrid = document.getElementById('seatsGrid');
+      seatsGrid.innerHTML = '';
+      selectedSeat = null;
+      document.getElementById('selectedSeatInfo').textContent = 'Seçilmedi';
+      
+      // Generate 50 seats (5 columns x 10 rows)
+      for (let i = 1; i <= 50; i++) {
+        const seat = document.createElement('div');
+        seat.className = 'seat';
+        seat.textContent = i;
+        
+        // Random booked seats for demo
+        if (Math.random() < 0.3) {
+          seat.classList.add('booked');
+        } else {
+          seat.onclick = () => selectSeat(i);
+        }
+        seatsGrid.appendChild(seat);
+      }
+
+      // Load stops for boarding/alighting points
+      if (currentSchedule.stops && Array.isArray(currentSchedule.stops)) {
+        const boardingSelect = document.getElementById('boardingPoint');
+        const alightingSelect = document.getElementById('alightingPoint');
+        boardingSelect.innerHTML = '<option value="">Seçiniz</option>';
+        alightingSelect.innerHTML = '<option value="">Seçiniz</option>';
+        
+        currentSchedule.stops.forEach(stop => {
+          const option1 = document.createElement('option');
+          option1.value = stop.name;
+          option1.textContent = stop.name;
+          boardingSelect.appendChild(option1);
+          
+          const option2 = document.createElement('option');
+          option2.value = stop.name;
+          option2.textContent = stop.name;
+          alightingSelect.appendChild(option2);
+        });
+
+        boardingSelect.onchange = updatePaymentButtonState;
+        alightingSelect.onchange = updatePaymentButtonState;
+      }
+
+      updatePaymentButtonState();
+    }
+
+    // Select Seat
+    function selectSeat(seatNumber) {
+      document.querySelectorAll('.seat.selected').forEach(s => s.classList.remove('selected'));
+      const targetSeat = Array.from(document.querySelectorAll('.seat')).find(s => Number(s.textContent) === Number(seatNumber));
+      if (targetSeat) targetSeat.classList.add('selected');
+      selectedSeat = seatNumber;
+      document.getElementById('selectedSeatInfo').textContent = 'Koltuk ' + seatNumber + ' seçildi';
+
+      updatePaymentButtonState();
+    }
+
+    function updatePaymentButtonState() {
+      const boarding = document.getElementById('boardingPoint').value;
+      const alighting = document.getElementById('alightingPoint').value;
+      document.getElementById('proceedPaymentBtn').disabled = !selectedSeat || !boarding || !alighting;
+    }
+
+    // Load Payment Summary
+    function loadPaymentSummary() {
+      if (!currentSchedule || !selectedSeat) return;
+      
+      const boarding = document.getElementById('boardingPoint').value;
+      const alighting = document.getElementById('alightingPoint').value;
+      
+      document.getElementById('paymentRoute').textContent = currentSchedule.route_name;
+      document.getElementById('paymentSeat').textContent = 'Koltuk ' + selectedSeat;
+      document.getElementById('paymentBoarding').textContent = boarding;
+      document.getElementById('paymentAlighting').textContent = alighting;
+      document.getElementById('paymentPassenger').textContent = currentUser.email || currentUser.phone || currentUser.tc_id;
+      document.getElementById('paymentTotal').textContent = '₺' + currentSchedule.price;
+    }
+
+    // Complete Booking
+    async function completeBooking() {
+      const cardholder = document.getElementById('cardholderName').value.trim();
+      const cardNumber = document.getElementById('cardNumber').value.trim();
+      const cardExpiry = document.getElementById('cardExpiry').value.trim();
+      const cardCVV = document.getElementById('cardCVV').value.trim();
+
+      if (!cardholder || !cardNumber || !cardExpiry || !cardCVV) {
+        alert('Lütfen tüm kart bilgilerini doldurunuz');
+        return;
+      }
+
+      try {
+        const userId = currentUser?.user_id || currentUser?.id;
+        if (!userId) {
+          alert('Kullanıcı bilgisi bulunamadı. Lütfen tekrar giriş yapın.');
+          return;
+        }
+
+        const response = await fetch('/bookings/new', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            user_id: userId,
+            schedule_id: currentSchedule.id,
+            seat_number: String(selectedSeat),
+            boarding_point: document.getElementById('boardingPoint').value,
+            alighting_point: document.getElementById('alightingPoint').value
+          })
+        });
+
+        const data = await response.json();
+
+        if (response.ok) {
+          currentBooking = data;
+          goToTracking();
+        } else {
+          alert(data.detail || 'Bilet satın alımı başarısız oldu');
+        }
+      } catch (err) {
+        alert('Hata: ' + err.message);
+      }
+    }
+
+    // Load Tracking Info
+    function loadTrackingInfo() {
+      if (!currentBooking || !currentSchedule) return;
+      
+      document.getElementById('trackingPNR').textContent = currentBooking.pnr;
+      document.getElementById('trackingRoute').textContent = currentSchedule.route_name;
+      document.getElementById('trackingSeat').textContent = 'Koltuk ' + currentBooking.seat_number;
+      document.getElementById('trackingPlate').textContent = currentSchedule.vehicle_id;
+      document.getElementById('trackingTime').textContent = currentSchedule.departure_time + ' - ' + currentSchedule.arrival_time;
+
+      trackingEvents = [`${new Date().toLocaleTimeString('tr-TR')} - Takip başlatıldı`];
+      renderTrackingTimeline();
+      
+      initTrackingMap();
+      connectTrackingSocket();
+      startTrackingFallbackSimulation();
+    }
+
+    function initTrackingMap() {
+      const mapEl = document.getElementById('trackingMap');
+      if (!mapEl) return;
+
+      if (!trackingMap) {
+        trackingMap = L.map('trackingMap');
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+          attribution: '&copy; OpenStreetMap contributors'
+        }).addTo(trackingMap);
+      }
+
+      if (trackingRouteLayer) {
+        trackingMap.removeLayer(trackingRouteLayer);
+        trackingRouteLayer = null;
+      }
+      if (trackingBusMarker) {
+        trackingMap.removeLayer(trackingBusMarker);
+        trackingBusMarker = null;
+      }
+
+      trackingRoutePoints = (currentSchedule.stops || [])
+        .filter(s => typeof s.lat === 'number' && typeof s.lon === 'number')
+        .map(s => [s.lat, s.lon]);
+
+      if (!trackingRoutePoints.length) {
+        mapEl.innerHTML = '<div style="width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; color: #6b7280;">Canlı rota verisi bulunamadı</div>';
+        return;
+      }
+
+      trackingRouteLayer = L.polyline(trackingRoutePoints, { color: '#059669', weight: 5, opacity: 0.8 }).addTo(trackingMap);
+      trackingBusMarker = L.marker(trackingRoutePoints[0]).addTo(trackingMap).bindPopup('Araç Konumu');
+
+      trackingMap.fitBounds(trackingRouteLayer.getBounds(), { padding: [20, 20] });
+      setTimeout(() => trackingMap.invalidateSize(), 100);
+    }
+
+    function connectTrackingSocket() {
+      if (trackingSocket) return;
+
+      const tripId = currentSchedule?.trip_id || 'demo_trip';
+      const protocol = window.location.protocol === 'https:' ? 'wss' : 'ws';
+      const wsUrl = `${protocol}://${window.location.host}/ws/trip/${tripId}`;
+
+      try {
+        trackingSocket = new WebSocket(wsUrl);
+
+        trackingSocket.onopen = () => {
+          trackingPingInterval = setInterval(() => {
+            if (trackingSocket && trackingSocket.readyState === WebSocket.OPEN) {
+              trackingSocket.send('ping');
+            }
+          }, 15000);
+        };
+
+        trackingSocket.onmessage = (event) => {
+          try {
+            const payload = JSON.parse(event.data);
+            if (payload?.event === 'break_started' || payload?.event === 'break_ended') {
+              const isStart = payload.event === 'break_started';
+              const location = payload.location_name ? ` - ${payload.location_name}` : '';
+              appendTrackingEvent(isStart ? `Mola başladı${location}` : `Mola bitti${location}`);
+              applyStatusChip(null, isStart);
+              document.getElementById('trackingStatus').textContent = isStart ? 'Molada' : 'Yolda';
+              if (isStart) {
+                document.getElementById('trackingSpeed').textContent = '0 km/h';
+              }
+              return;
+            }
+            updateTrackingUI(payload);
+          } catch (_) {
+            // Ignore non-JSON keepalive messages.
+          }
+        };
+
+        trackingSocket.onclose = () => {
+          trackingSocket = null;
+          if (trackingPingInterval) {
+            clearInterval(trackingPingInterval);
+            trackingPingInterval = null;
+          }
+        };
+
+        trackingSocket.onerror = () => {
+          // Fallback simulation keeps the UI alive when WS is unavailable.
+        };
+      } catch (_) {
+        // WS init failed; fallback simulation continues.
+      }
+    }
+
+    function updateTrackingUI(payload) {
+      const speed = Number(payload?.speed || 0);
+      const eta = payload?.eta;
+      const delayMinutes = Number(payload?.delay_minutes || 0);
+      const breakActive = Boolean(payload?.break_active);
+      const lat = Number(payload?.lat);
+      const lon = Number(payload?.lon);
+
+      document.getElementById('trackingSpeed').textContent = `${Math.max(0, speed).toFixed(0)} km/h`;
+      document.getElementById('trackingStatus').textContent = breakActive ? 'Molada' : (payload?.status || 'Yolda');
+      document.getElementById('trackingETA').textContent = eta != null ? `${Number(eta).toFixed(0)} dk` : '-- dk';
+      applyStatusChip(delayMinutes, breakActive);
+
+      if (!Number.isNaN(lat) && !Number.isNaN(lon)) {
+        document.getElementById('trackingLocation').textContent = `${lat.toFixed(4)}, ${lon.toFixed(4)}`;
+        if (trackingMap && trackingBusMarker) {
+          trackingBusMarker.setLatLng([lat, lon]);
+        }
+      }
+    }
+
+    function startTrackingFallbackSimulation() {
+      if (!trackingRoutePoints.length || trackingSimulationInterval) return;
+
+      trackingSimIndex = 0;
+      trackingSimulationInterval = setInterval(() => {
+        if (trackingSocket && trackingSocket.readyState === WebSocket.OPEN) {
+          return;
+        }
+
+        const point = trackingRoutePoints[trackingSimIndex % trackingRoutePoints.length];
+        trackingSimIndex += 1;
+        const fakePayload = {
+          lat: point[0],
+          lon: point[1],
+          speed: 55 + Math.random() * 30,
+          eta: Math.max(5, (trackingRoutePoints.length - (trackingSimIndex % trackingRoutePoints.length)) * 7),
+          status: 'Yolda',
+          delay_minutes: Math.max(0, Math.floor(Math.random() * 12) - 2)
+        };
+        updateTrackingUI(fakePayload);
+      }, 3000);
+    }
+
+    function applyStatusChip(delayMinutes, breakActive) {
+      const chip = document.getElementById('trackingStatusChip');
+      if (!chip) return;
+
+      if (breakActive) {
+        chip.className = 'status-chip break';
+        chip.textContent = 'Mola Aktif';
+        return;
+      }
+
+      if (delayMinutes > 0) {
+        chip.className = 'status-chip delay';
+        chip.textContent = `Rötar +${delayMinutes} dk`;
+        return;
+      }
+
+      chip.className = 'status-chip normal';
+      chip.textContent = 'Normal Sefer';
+    }
+
+    function appendTrackingEvent(message) {
+      trackingEvents.unshift(`${new Date().toLocaleTimeString('tr-TR')} - ${message}`);
+      trackingEvents = trackingEvents.slice(0, 8);
+      renderTrackingTimeline();
+    }
+
+    function renderTrackingTimeline() {
+      const el = document.getElementById('trackingTimeline');
+      if (!el) return;
+      el.innerHTML = '';
+      if (!trackingEvents.length) {
+        el.innerHTML = '<div style="color:#64748b;">Henüz olay yok</div>';
+        return;
+      }
+
+      trackingEvents.forEach(item => {
+        const row = document.createElement('div');
+        row.className = 'timeline-item';
+        row.innerHTML = `<div class="timeline-dot"></div><div>${item}</div>`;
+        el.appendChild(row);
+      });
+    }
+
+    async function sendBreakEvent(action) {
+      const tripId = currentSchedule?.trip_id || 'demo_trip';
+      try {
+        const response = await fetch(`/trip/${tripId}/break`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'x-api-key': telemetryApiKey
+          },
+          body: JSON.stringify({
+            action,
+            company_id: currentSchedule?.company?.id || null,
+            location_name: currentSchedule?.route_name || 'Bilinmeyen Lokasyon'
+          })
+        });
+
+        if (!response.ok) {
+          const data = await response.json();
+          appendTrackingEvent(`Mola isteği başarısız: ${data.error || 'Bilinmeyen hata'}`);
+          return;
+        }
+
+        const data = await response.json();
+        if (data.event === 'break_started') {
+          appendTrackingEvent(`Mola başladı - ${data.location_name || ''}`);
+          applyStatusChip(null, true);
+          document.getElementById('trackingStatus').textContent = 'Molada';
+          document.getElementById('trackingSpeed').textContent = '0 km/h';
+        } else if (data.event === 'break_ended') {
+          appendTrackingEvent(`Mola bitti - ${data.location_name || ''}`);
+          applyStatusChip(0, false);
+        }
+      } catch (err) {
+        appendTrackingEvent(`Mola isteği hatası: ${err.message}`);
+      }
+    }
+
+    function stopTrackingRealtime() {
+      if (trackingSimulationInterval) {
+        clearInterval(trackingSimulationInterval);
+        trackingSimulationInterval = null;
+      }
+      if (trackingPingInterval) {
+        clearInterval(trackingPingInterval);
+        trackingPingInterval = null;
+      }
+      if (trackingSocket) {
+        try { trackingSocket.close(); } catch (_) {}
+        trackingSocket = null;
+      }
+      trackingEvents = [];
+    }
+
+    // Load Profile
+    function loadProfile() {
+      if (currentUser) {
+        document.getElementById('profileUserId').textContent = currentUser.user_id || currentUser.id;
+        document.getElementById('profileEmail').textContent = currentUser.email || '-';
+        document.getElementById('profilePhone').textContent = currentUser.phone || '-';
+      }
+      const adminKeyInput = document.getElementById('adminApiKeyInput');
+      if (adminKeyInput && !adminKeyInput.value) {
+        adminKeyInput.value = localStorage.getItem('adminApiKey') || '';
+      }
+      updateWebPushDiagnostics();
+    }
+
+    // Load Tickets
+    function loadTickets() {
+      const container = document.getElementById('ticketsContainer');
+      if (!currentBooking) {
+        container.innerHTML = '<p style="color: #6b7280;">Henüz bilet satın almadınız.</p>';
+        return;
+      }
+      container.innerHTML = `
+        <div class="ticket-item">
+          <div class="ticket-header">
+            <div class="ticket-pnr">PNR: ${currentBooking.pnr}</div>
+            <div class="ticket-status confirmed">Onaylandı</div>
+          </div>
+          <div>Fiyat: <strong>₺${currentBooking.price}</strong></div>
+          <div>Tarih: <small>${currentBooking.created_at}</small></div>
+        </div>
+      `;
+    }
+
+    // Contact Functions
+    function startLiveChat() { showAlert('contactAlert', 'Canlı destek başlatıldı!', 'success'); }
+    function openContactForm() { showAlert('contactAlert', 'İletişim formu açıldı', 'success'); }
+    function callSupport() { showAlert('contactAlert', '0444 XXX XXXX aranıyor...', 'warning'); }
+    function openFAQ() { window.open('#faq', '_blank'); }
+    function changePassword() { showAlert('profileAlert', 'Parola değiştirme sayfası açıldı', 'info'); }
+    function enableTwoFactor() { showAlert('profileAlert', '2FA ayarları başlatıldı', 'success'); }
+    function sendFeedback() { 
+      const msg = document.getElementById('feedbackMessage').value;
+      if (msg.trim()) {
+        showAlert('contactAlert', 'Geri bildiriminiz başarıyla gönderildi!', 'success');
+        document.getElementById('feedbackMessage').value = '';
+      }
+    }
+
+    // Logout
+    function logout() {
+      stopTrackingRealtime();
+      currentUser = null;
+      currentBooking = null;
+      localStorage.removeItem('userToken');
+      switchAuthTab('login');
+      showPage('authPage');
+      document.getElementById('loginInput').value = '';
+      document.getElementById('loginPassword').value = '';
+    }
+  </script>
+</body>
+</html>

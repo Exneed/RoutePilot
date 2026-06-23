@@ -1,0 +1,50 @@
+version: '3.9'
+
+services:
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: bus-tracker-backend
+    ports:
+      - "8000:8000"
+    environment:
+      - PYTHONUNBUFFERED=1
+      - ENV=development
+    volumes:
+      - ./backend:/app
+    command: python -m uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 5s
+    networks:
+      - bus-tracker-network
+
+  postgres:
+    image: postgres:16-alpine
+    container_name: bus-tracker-db
+    environment:
+      POSTGRES_DB: bus_tracker
+      POSTGRES_USER: tracker_user
+      POSTGRES_PASSWORD: tracker_pass_123
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - bus-tracker-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U tracker_user -d bus_tracker"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+networks:
+  bus-tracker-network:
+    driver: bridge
+
+volumes:
+  postgres_data:

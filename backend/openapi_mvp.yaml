@@ -1,0 +1,526 @@
+openapi: 3.0.3
+info:
+  title: Bus Tracker MVP API
+  version: 0.2.0
+  description: |
+    MVP odakli sefer eslestirme, canli konum, ETA/rotar ve mola event API tanimi.
+    Firebase service account tanimliysa push test endpointi gercek FCM gonderimi yapar.
+    Firebase tanimli degilse sistem otomatik dry-run/stub modunda calisir.
+servers:
+  - url: http://127.0.0.1:8000
+paths:
+  /companies:
+    get:
+      summary: Firma listesi (admin)
+      parameters:
+        - name: x-admin-key
+          in: header
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Firma listesi
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CompanyListResponse'
+        '401':
+          description: Yetkisiz
+  /match:
+    post:
+      summary: PNR veya plaka ile sefer eslestir
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MatchRequest'
+      responses:
+        '200':
+          description: Basarili eslestirme
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MatchResponse'
+        '400':
+          description: Hatali istek
+  /telemetry:
+    post:
+      summary: Aractan telemetri al
+      security:
+        - ApiKeyAuth: []
+      description: Global `TELEMETRY_API_KEY` veya aracin bagli oldugu firmaya ait `x-api-key` kabul edilir.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TelemetryRequest'
+      responses:
+        '200':
+          description: Telemetri alindi
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: ok
+  /trip/{trip_id}:
+    get:
+      summary: Sefer ozeti, ETA ve rotar bilgisi
+      parameters:
+        - name: trip_id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Sefer ozeti
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TripSummaryResponse'
+        '404':
+          description: Sefer bulunamadi
+  /trip/{trip_id}/break:
+    post:
+      summary: Mola basladi/bitti event yayini
+      security:
+        - ApiKeyAuth: []
+      description: Global `TELEMETRY_API_KEY` veya ilgili firmaya ait `x-api-key` ile cagrilir.
+      parameters:
+        - name: trip_id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BreakEventRequest'
+      responses:
+        '200':
+          description: Event yayinlandi
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BreakEventResponse'
+        '400':
+          description: Hatali action
+  /companies/{company_id}/api-key:
+    get:
+      summary: Firma API key durumu
+      parameters:
+        - name: company_id
+          in: path
+          required: true
+          schema:
+            type: integer
+        - name: x-admin-key
+          in: header
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Firma key ozeti
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CompanyApiKeyStatusResponse'
+        '401':
+          description: Yetkisiz
+        '404':
+          description: Firma bulunamadi
+    post:
+      summary: Firma API key olustur veya dondur
+      parameters:
+        - name: company_id
+          in: path
+          required: true
+          schema:
+            type: integer
+        - name: x-admin-key
+          in: header
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CompanyApiKeyRequest'
+      responses:
+        '200':
+          description: Firma key kaydedildi
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CompanyApiKeyRotateResponse'
+        '401':
+          description: Yetkisiz
+        '404':
+          description: Firma bulunamadi
+  /push/register-token:
+    post:
+      summary: Kullanici push token kaydi
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PushTokenRequest'
+      responses:
+        '200':
+          description: Token kaydedildi
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PushRegisterResponse'
+        '400':
+          description: Hatali platform
+  /push/test:
+    post:
+      summary: Push test dry-run
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PushTestRequest'
+      responses:
+        '200':
+          description: Test bildirimi kuyruklandi
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PushTestResponse'
+components:
+  securitySchemes:
+    ApiKeyAuth:
+      type: apiKey
+      in: header
+      name: x-api-key
+  schemas:
+    MatchRequest:
+      type: object
+      properties:
+        pnr:
+          type: string
+          nullable: true
+          example: BOOK-2026-06-24-AB123
+        plate:
+          type: string
+          nullable: true
+          example: 06ABC0001
+      anyOf:
+        - required: [pnr]
+        - required: [plate]
+    MatchResponse:
+      type: object
+      properties:
+        trip_id:
+          type: string
+          example: demo_trip
+        route_name:
+          type: string
+          example: Ankara - Kizilay
+        destination:
+          $ref: '#/components/schemas/GeoPoint'
+        route:
+          type: array
+          items:
+            $ref: '#/components/schemas/GeoPoint'
+      required: [trip_id, route_name, destination, route]
+    TelemetryRequest:
+      type: object
+      required: [vehicle_id, trip_id, lat, lon, timestamp]
+      properties:
+        vehicle_id:
+          type: string
+          example: 06ABC0001
+        trip_id:
+          type: string
+          example: demo_trip
+        lat:
+          type: number
+          format: double
+          example: 39.9334
+        lon:
+          type: number
+          format: double
+          example: 32.8597
+        speed:
+          type: number
+          format: double
+          nullable: true
+          example: 67.5
+        heading:
+          type: number
+          format: double
+          nullable: true
+          example: 180.0
+        timestamp:
+          type: string
+          format: date-time
+          example: 2026-06-24T12:45:00Z
+    TripSummaryResponse:
+      type: object
+      properties:
+        trip_id:
+          type: string
+        route_name:
+          type: string
+        last:
+          type: object
+          nullable: true
+          properties:
+            lat: { type: number }
+            lon: { type: number }
+            speed: { type: number, nullable: true }
+            heading: { type: number, nullable: true }
+            timestamp: { type: string }
+        status:
+          type: string
+          example: moving
+        eta_minutes:
+          type: number
+          nullable: true
+          example: 24
+        delay_minutes:
+          type: integer
+          nullable: true
+          example: 7
+        is_delayed:
+          type: boolean
+          example: true
+        break_active:
+          type: boolean
+          example: false
+        break_since:
+          type: string
+          nullable: true
+          example: 2026-06-24T13:00:00
+        route:
+          type: array
+          items:
+            $ref: '#/components/schemas/GeoPoint'
+        destination:
+          $ref: '#/components/schemas/GeoPoint'
+      required: [trip_id, route_name, status, is_delayed, break_active, route, destination]
+    BreakEventRequest:
+      type: object
+      required: [action]
+      properties:
+        action:
+          type: string
+          enum: [start, end]
+          example: start
+        company_id:
+          type: integer
+          nullable: true
+          example: 1
+        location_name:
+          type: string
+          nullable: true
+          example: Polatli Tesisleri
+        note:
+          type: string
+          nullable: true
+          example: 15 dk mola
+    BreakEventResponse:
+      type: object
+      properties:
+        event:
+          type: string
+          enum: [break_started, break_ended]
+        trip_id:
+          type: string
+        timestamp:
+          type: string
+        location_name:
+          type: string
+          nullable: true
+        note:
+          type: string
+          nullable: true
+        break_active:
+          type: boolean
+      required: [event, trip_id, timestamp, break_active]
+    PushTokenRequest:
+      type: object
+      required: [user_id, platform, token]
+      properties:
+        user_id:
+          type: integer
+          example: 12
+        platform:
+          type: string
+          enum: [android, ios, web]
+          example: android
+        token:
+          type: string
+          example: fcm_token_abc123
+    PushRegisterResponse:
+      type: object
+      properties:
+        status:
+          type: string
+          example: registered
+        user_id:
+          type: integer
+        token_count:
+          type: integer
+      required: [status, user_id, token_count]
+    PushTestRequest:
+      type: object
+      required: [user_id]
+      properties:
+        user_id:
+          type: integer
+          example: 12
+        title:
+          type: string
+          example: Seferim Nerede
+        body:
+          type: string
+          example: Test bildirimi
+    PushTestResponse:
+      type: object
+      properties:
+        status:
+          type: string
+          example: queued
+        provider:
+          type: string
+          example: fcm_stub
+        user_id:
+          type: integer
+        title:
+          type: string
+        body:
+          type: string
+        target_count:
+          type: integer
+        tokens:
+          type: array
+          items:
+            type: object
+            properties:
+              platform:
+                type: string
+              token:
+                type: string
+        note:
+          type: string
+      required: [status, provider, user_id, target_count]
+    CompanyApiKeyRequest:
+      type: object
+      properties:
+        api_key:
+          type: string
+          nullable: true
+          example: firma-ozel-key-123
+    CompanyApiKeyStatusResponse:
+      type: object
+      properties:
+        company_id:
+          type: integer
+        company_name:
+          type: string
+        phone:
+          type: string
+          nullable: true
+        email:
+          type: string
+          nullable: true
+        has_api_key:
+          type: boolean
+        masked_api_key:
+          type: string
+          nullable: true
+        source:
+          type: string
+          nullable: true
+        api_key_active:
+          type: boolean
+        api_key_rotated_at:
+          type: string
+          nullable: true
+        global_fallback_enabled:
+          type: boolean
+      required: [company_id, company_name, has_api_key, api_key_active, global_fallback_enabled]
+    CompanyApiKeyRotateResponse:
+      type: object
+      properties:
+        company_id:
+          type: integer
+        company_name:
+          type: string
+        api_key:
+          type: string
+        masked_api_key:
+          type: string
+        source:
+          type: string
+        api_key_rotated_at:
+          type: string
+          nullable: true
+        message:
+          type: string
+      required: [company_id, company_name, api_key, masked_api_key, source, message]
+    CompanyListResponse:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/CompanyApiKeyStatusResponse'
+      required: [items]
+    GeoPoint:
+      type: object
+      properties:
+        lat:
+          type: number
+          format: double
+        lon:
+          type: number
+          format: double
+      required: [lat, lon]
+x-websocket:
+  channels:
+    /ws/trip/{trip_id}:
+      summary: Canli konum ve event yayini
+      messageExamples:
+        telemetry:
+          lat: 39.9334
+          lon: 32.8597
+          speed: 62.0
+          heading: 177.0
+          eta: 22.0
+          delay_minutes: 6
+          is_delayed: true
+          status: moving
+          route:
+            - { lat: 39.90, lon: 32.85 }
+            - { lat: 39.93, lon: 32.86 }
+        break_started:
+          event: break_started
+          trip_id: demo_trip
+          timestamp: 2026-06-24T13:00:00
+          location_name: Polatli Tesisleri
+          note: 15 dk mola
+          break_active: true
+        break_ended:
+          event: break_ended
+          trip_id: demo_trip
+          timestamp: 2026-06-24T13:18:00
+          location_name: Polatli Tesisleri
+          break_active: false

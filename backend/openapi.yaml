@@ -1,0 +1,376 @@
+openapi: 3.0.0
+info:
+  title: Bus Tracker API
+  description: Otobüs canlı takip sistemi API'si. Seferleri eşleştir, telemetri verisini gönder, WebSocket üzerinden canlı güncellemeleri al.
+  version: 1.0.0
+  contact:
+    name: Bus Tracker Support
+    url: https://github.com/coinscanner/bus-tracker
+  license:
+    name: MIT
+
+servers:
+  - url: http://localhost:8000
+    description: Yerel geliştirme sunucusu
+  - url: https://api.bustracker.local
+    description: Üretim sunucusu
+
+tags:
+  - name: Trip Matching
+    description: Sefer eşleştirme ve sorgulaması
+  - name: Telemetry
+    description: Konum ve telemetri verisi ingestion
+  - name: WebSocket
+    description: Canlı güncellemeler için WebSocket bağlantıları
+  - name: Health
+    description: Sağlık kontrolü
+
+paths:
+  /:
+    get:
+      tags:
+        - Health
+      summary: HTML arayüzü döndür
+      operationId: getHome
+      responses:
+        '200':
+          description: HTML arayüzü başarıyla yüklendi
+          content:
+            text/html:
+              schema:
+                type: string
+
+  /match:
+    post:
+      tags:
+        - Trip Matching
+      summary: PNR veya plaka ile sefer eşleştir
+      operationId: matchTrip
+      description: |
+        Bilet numarası (PNR) veya otobüs plakası kullanarak sefer bilgisini eşleştir.
+        Demo amaçlı, şu anda tüm girdiler `demo_trip` sefeğini döndürür.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                pnr:
+                  type: string
+                  description: Bilet numarası (opsiyonel)
+                  example: "PNR123456"
+                plate:
+                  type: string
+                  description: Otobüs plakası (opsiyonel)
+                  example: "34 AB 2534"
+              oneOf:
+                - required: [pnr]
+                - required: [plate]
+      responses:
+        '200':
+          description: Sefer başarıyla eşleştirildi
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  trip_id:
+                    type: string
+                    example: demo_trip
+                  route_name:
+                    type: string
+                    example: "Ankara - Kızılay"
+                  destination:
+                    type: object
+                    properties:
+                      lat:
+                        type: number
+                        format: double
+                        example: 39.9334
+                      lon:
+                        type: number
+                        format: double
+                        example: 32.8597
+                  route:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        lat:
+                          type: number
+                          format: double
+                        lon:
+                          type: number
+                          format: double
+                    example:
+                      - { lat: 39.900, lon: 32.850 }
+                      - { lat: 39.905, lon: 32.855 }
+                      - { lat: 39.9334, lon: 32.8597 }
+        '400':
+          description: PNR veya plaka girilmedi
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    example: "pnr veya plate giriniz"
+
+  /telemetry:
+    post:
+      tags:
+        - Telemetry
+      summary: Telemetri verisi gönder
+      operationId: ingestTelemetry
+      description: |
+        Otobüsün konumunu, hızını ve diğer telemetri bilgilerini gönder.
+        Telemetri alındığında, o sefer için açık WebSocket bağlantılarına güncelleme gönderilir.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - vehicle_id
+                - trip_id
+                - lat
+                - lon
+                - timestamp
+              properties:
+                vehicle_id:
+                  type: string
+                  description: Araç tanımlayıcısı
+                  example: "veh_a1b2c3"
+                trip_id:
+                  type: string
+                  description: Sefer ID'si
+                  example: "demo_trip"
+                lat:
+                  type: number
+                  format: double
+                  description: Enlem
+                  example: 39.915
+                lon:
+                  type: number
+                  format: double
+                  description: Boylam
+                  example: 32.865
+                speed:
+                  type: number
+                  format: float
+                  description: Hız (km/h)
+                  example: 75.5
+                heading:
+                  type: number
+                  format: float
+                  description: Yön açısı (derece)
+                  example: 90.0
+                timestamp:
+                  type: string
+                  format: date-time
+                  description: ISO 8601 format zaman damgası
+                  example: "2026-06-21T23:53:50.786396Z"
+      responses:
+        '200':
+          description: Telemetri başarıyla alındı
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: "ok"
+
+  /trip/{trip_id}:
+    get:
+      tags:
+        - Trip Matching
+      summary: Sefer özeti ve son durum
+      operationId: tripSummary
+      parameters:
+        - name: trip_id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Sefer ID'si
+          example: demo_trip
+      responses:
+        '200':
+          description: Sefer bilgisi ve mevcut durumu
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  trip_id:
+                    type: string
+                  route_name:
+                    type: string
+                  last:
+                    type: object
+                    nullable: true
+                    description: Son alınan telemetri
+                    properties:
+                      vehicle_id:
+                        type: string
+                      trip_id:
+                        type: string
+                      lat:
+                        type: number
+                      lon:
+                        type: number
+                      speed:
+                        type: number
+                      heading:
+                        type: number
+                      timestamp:
+                        type: string
+                  status:
+                    type: string
+                    enum: [unknown, pause, slow, moving]
+                    description: Otobüsün durum tahmini
+                  eta_minutes:
+                    type: number
+                    format: float
+                    nullable: true
+                    description: Hedefte kalan süre (dakika)
+                  route:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        lat:
+                          type: number
+                        lon:
+                          type: number
+                  destination:
+                    type: object
+                    properties:
+                      lat:
+                        type: number
+                      lon:
+                        type: number
+        '404':
+          description: Sefer bulunamadı
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    example: "trip not found"
+
+  /ws/trip/{trip_id}:
+    get:
+      tags:
+        - WebSocket
+      summary: Sefer için WebSocket bağlantısı
+      operationId: wsTrip
+      parameters:
+        - name: trip_id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Sefer ID'si
+      description: |
+        WebSocket bağlantısı üzerinden o sefer için canlı telemetri güncellemeleri alın.
+        
+        **Bağlantı kuruluş:**
+        ```
+        ws://localhost:8000/ws/trip/demo_trip
+        ```
+        
+        **Gelen mesaj formatı:**
+        ```json
+        {
+          "type": "telemetry",
+          "trip_id": "demo_trip",
+          "payload": {
+            "lat": 39.92,
+            "lon": 32.87,
+            "speed": 70.0,
+            "heading": 90.0,
+            "timestamp": "2026-06-21T23:54:24.109301Z",
+            "eta_minutes": 1.48,
+            "status": "moving",
+            "route": [...]
+          }
+        }
+        ```
+      responses:
+        '101':
+          description: WebSocket yükseltildi
+        '404':
+          description: Sefer bulunamadı
+
+components:
+  schemas:
+    MatchRequest:
+      type: object
+      properties:
+        pnr:
+          type: string
+          nullable: true
+        plate:
+          type: string
+          nullable: true
+
+    Telemetry:
+      type: object
+      required:
+        - vehicle_id
+        - trip_id
+        - lat
+        - lon
+        - timestamp
+      properties:
+        vehicle_id:
+          type: string
+        trip_id:
+          type: string
+        lat:
+          type: number
+          format: double
+        lon:
+          type: number
+          format: double
+        speed:
+          type: number
+          format: float
+        heading:
+          type: number
+          format: float
+        timestamp:
+          type: string
+          format: date-time
+
+    TripSummary:
+      type: object
+      properties:
+        trip_id:
+          type: string
+        route_name:
+          type: string
+        last:
+          type: object
+          nullable: true
+        status:
+          type: string
+          enum: [unknown, pause, slow, moving]
+        eta_minutes:
+          type: number
+          format: float
+          nullable: true
+        route:
+          type: array
+          items:
+            type: object
+        destination:
+          type: object
