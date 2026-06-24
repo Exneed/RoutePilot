@@ -1,4 +1,4 @@
-# SeferScope - Android Uygulaması
+# RoutePilot - Android Uygulaması
 
 Modern Flutter uygulaması ile Android'e uyumlu, yeşil temayla tasarlanmış otobüs takip sistemi.
 
