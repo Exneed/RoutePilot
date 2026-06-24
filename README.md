@@ -1,4 +1,4 @@
-# SeferScope - Otobüs Canlı Takip Sistemi
+# RoutePilot- Otobüs Canlı Takip Sistemi
 
 Gerçek zamanlı otobüs konum takibi, canlı harita, WebSocket güncellemeleri ve booking yönetimi sistem.
 
